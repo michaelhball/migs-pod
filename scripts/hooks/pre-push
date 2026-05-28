@@ -1,0 +1,13 @@
+#!/bin/bash
+
+echo "Running pre-push checks..."
+
+echo "→ Unit tests..."
+./gradlew testDebugUnitTest --quiet 2>&1
+if [ $? -ne 0 ]; then
+    echo "✗ Unit tests failed. Push aborted."
+    exit 1
+fi
+
+echo "✓ All checks passed."
+exit 0

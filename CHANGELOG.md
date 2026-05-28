@@ -1,0 +1,49 @@
+# Changelog
+
+All notable changes to MigsPod will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+- Release signing configuration
+- ProGuard/R8 rules for dependencies
+- GitHub Actions CI (unit tests, lint, build)
+- Pre-push git hook for unit tests
+- Firebase Crashlytics for crash reporting
+- CHANGELOG.md, README.md, TODO.md
+
+### Changed
+- Updated Compose BOM 2024.12.01 → 2026.02.01
+- Updated Room 2.6.1 → 2.8.4
+- Updated Media3 1.5.1 → 1.9.2
+- Updated Navigation 2.8.5 → 2.9.7
+- Updated Lifecycle 2.8.7 → 2.10.0
+- Updated Activity Compose 1.9.3 → 1.12.3
+- Updated Core KTX 1.15.0 → 1.17.0
+- Updated WorkManager 2.10.0 → 2.11.1
+- Updated Coroutines 1.9.0 → 1.10.2
+
+### Fixed
+- Lint: String.format without Locale parameter
+- Lint: Exported service without permission
+- Lint: Uri.parse instead of toUri() KTX extension
+
+## [1.0.0] - Unreleased
+
+### Added
+- Search podcasts via iTunes Search API
+- Subscribe/unsubscribe to podcasts
+- Episode listing with playback progress
+- Background audio playback with media notification
+- Playback position saving (every 5s + on pause)
+- Mini player bar with progress indicator
+- Full Now Playing screen with artwork, seek bar, skip controls
+- Episode detail bottom sheet
+- Episode downloads for offline listening
+- New Episodes feed across all subscriptions
+- Downloads tab with grouped/date sort
+- Pull-to-refresh on feeds
+- Dark theme (always-on)

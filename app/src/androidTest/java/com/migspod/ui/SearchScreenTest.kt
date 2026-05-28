@@ -1,0 +1,91 @@
+package com.migspod.ui
+
+import android.content.Context
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performImeAction
+import androidx.room.Room
+import androidx.test.core.app.ApplicationProvider
+import com.migspod.data.AppDatabase
+import com.migspod.data.PodcastRepository
+import com.migspod.ui.screens.SearchScreen
+import com.migspod.ui.theme.MigsPodTheme
+import org.junit.After
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+
+class SearchScreenTest {
+
+    @get:Rule
+    val composeTestRule = createComposeRule()
+
+    private lateinit var db: AppDatabase
+    private lateinit var repository: PodcastRepository
+
+    @Before
+    fun setup() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        repository = PodcastRepository(db.podcastDao(), db.episodeDao())
+    }
+
+    @After
+    fun teardown() {
+        db.close()
+    }
+
+    @Test
+    fun searchScreenShowsSearchField() {
+        composeTestRule.setContent {
+            MigsPodTheme {
+                SearchScreen(repository = repository, onSubscribed = {})
+            }
+        }
+        composeTestRule.onNodeWithText("Search for podcasts...").assertIsDisplayed()
+    }
+
+    @Test
+    fun searchScreenShowsTitle() {
+        composeTestRule.setContent {
+            MigsPodTheme {
+                SearchScreen(repository = repository, onSubscribed = {})
+            }
+        }
+        composeTestRule.onNodeWithText("Search Podcasts").assertIsDisplayed()
+    }
+
+    @Test
+    fun canTypeInSearchField() {
+        composeTestRule.setContent {
+            MigsPodTheme {
+                SearchScreen(repository = repository, onSubscribed = {})
+            }
+        }
+        composeTestRule.onNodeWithText("Search for podcasts...")
+            .performTextInput("serial podcast")
+        composeTestRule.onNodeWithText("serial podcast").assertIsDisplayed()
+    }
+
+    @Test
+    fun searchWithQueryShowsResultsOrLoading() {
+        composeTestRule.setContent {
+            MigsPodTheme {
+                SearchScreen(repository = repository, onSubscribed = {})
+            }
+        }
+        composeTestRule.onNodeWithText("Search for podcasts...")
+            .performTextInput("This American Life")
+        composeTestRule.onNodeWithText("This American Life")
+            .performImeAction() // triggers search
+
+        // After triggering search, either loading indicator or results should appear
+        // We just verify the UI doesn't crash (the main goal)
+        composeTestRule.waitForIdle()
+    }
+}

@@ -1,6 +1,7 @@
 package com.migspod.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -113,39 +114,7 @@ fun PodcastDetailScreen(
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 // Podcast header as first item
                 item(key = "header") {
-                    podcast?.let { p ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.Top,
-                        ) {
-                            AsyncImage(
-                                model = p.artworkUrl,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(100.dp)
-                                    .clip(RoundedCornerShape(12.dp)),
-                                contentScale = ContentScale.Crop,
-                            )
-                            Spacer(Modifier.width(16.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = p.author,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    text = p.description,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    maxLines = 4,
-                                    overflow = TextOverflow.Ellipsis,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                    }
+                    podcast?.let { p -> PodcastHeader(podcast = p) }
                 }
 
                 // Episodes
@@ -156,6 +125,43 @@ fun PodcastDetailScreen(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PodcastHeader(podcast: Podcast) {
+    var expanded by remember(podcast.feedUrl) { mutableStateOf(false) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        AsyncImage(
+            model = podcast.artworkUrl,
+            contentDescription = null,
+            modifier = Modifier
+                .size(100.dp)
+                .clip(RoundedCornerShape(12.dp)),
+            contentScale = ContentScale.Crop,
+        )
+        Spacer(Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = podcast.author,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = podcast.description,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = if (expanded) Int.MAX_VALUE else 4,
+                overflow = if (expanded) TextOverflow.Visible else TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.clickable { expanded = !expanded },
+            )
         }
     }
 }

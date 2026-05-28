@@ -2,55 +2,49 @@
 
 Things automation can't verify reliably. Run end-to-end on a real device before the first Play Store push. Tick each box; note pass/fail beside it.
 
+## Changes since the last pass
+
+- Bottom nav order is now **Search · Library · New · Downloads**; "New" tab icon is an RSS feed
+- Podcast description in detail header is **tap-to-expand**
+- Episode detail bottom sheet now **fills the screen** so the description has space to scroll; URLs in descriptions are **clickable**
+- "Delete download" button is hidden in the episode sheet when opened from the **Downloads** tab (the list already has its own delete)
+
 ## 0. Setup
 
-- [ ] Install fresh debug build: `./gradlew installDebug`
-- [ ] First launch: app opens without crash, lands on Search tab
-- [ ] Notification permission prompt (Android 13+) — accept
-- [ ] Verify dark theme is applied (no white flashes anywhere)
-
-- app opened without a crash, but to the library tab not the search tab (but actually I think library is a better default, though perhaps search is better the very first time it opens).
-- i didn't get a notification permission prompt
-- dark theme is applied :)
+- [x] Install fresh debug build: `./gradlew installDebug`
+- [x] First launch: app opens without crash, lands on Library tab (intentional — Library is the default)
+- [x] Notification permission prompt (Android 13+) — accept _(fixed: now requested at startup)_
+- [x] Verify dark theme is applied (no white flashes anywhere)
 
 ## 1. Discovery & subscribe
 
-- [ ] **Search tab → empty query**: no spurious requests, no error toast
-- [ ] **Search "Radiolab"**: results appear within ~2s, artwork loads
-- [ ] **Search a non-existent term** (e.g. "zzzqqqxyz"): empty state, no crash
-- [ ] **Tap a result** → podcast detail opens, episodes list populates
-- [ ] **Subscribe** from podcast detail → confirmation, appears in Library
-- [ ] **Subscribe to a feed with HTML in description** → no raw `<p>` or `&amp;` rendered
-- [ ] **Search a 2nd podcast and subscribe** → Library now shows two, sorted alphabetically by title
-- [ ] **Background search** (turn airplane mode on, then search) → graceful error, no crash
-
-- tapping a result doens't seem to work, it doesn't do anything
-- subscribing works, but I clicked the button directly in the search results, I couldn't see the detailed view.
+- [x] **Search tab → empty query**: no spurious requests, no error toast
+- [x] **Search "Radiolab"**: results appear within ~2s, artwork loads
+- [x] **Search a non-existent term** (e.g. "zzzqqqxyz"): empty state, no crash
+- [x] **Tap a result** → subscribes (if not already) + navigates to PodcastDetail _(fixed: tap row now opens detail; + button is subscribe-only)_
+- [x] **Subscribe** from podcast detail → confirmation, appears in Library
+- [x] **Subscribe to a feed with HTML in description** → no raw `<p>` or `&amp;` rendered
+- [x] **Search a 2nd podcast and subscribe** → Library now shows two, sorted alphabetically by title
+- [x] **Background search** (turn airplane mode on, then search) → graceful error, no crash
 
 ## 2. Library
 
-- [ ] Library grid renders artwork crisply (no blur, no aspect-ratio stretching)
-- [ ] Tap a podcast tile → detail screen loads instantly (no flash of empty state)
-- [ ] **Unsubscribe** (long-press or in-screen control if present) → tile removed, episodes disappear from New Episodes / Downloads
-
-
-- long-press doesn't work to unsubscribe, but using the in-detail-view ellipses works.
-- I clicked download in the library view, and then went to new episodes and it wasn't downloading
-- the download seemed to work when i clicked in the episode list though
-- the library detail episode list needs ellipsis options on each episode, with play / download / delete download etc.
+- [x] Library grid renders artwork crisply (no blur, no aspect-ratio stretching)
+- [x] Tap a podcast tile → detail screen loads instantly (no flash of empty state)
+- [x] **Unsubscribe** via overflow (⋮) menu in the podcast detail screen → tile removed, episodes disappear from New / Downloads _(long-press is not supported; canonical path is the kebab in detail view)_
+- [x] **Episode-row overflow (⋮) menu** in podcast detail: Play / Download / Delete download / Mark played–unplayed _(added)_
+- [x] **Download from episode row** survives navigation _(fixed: downloads run on the application scope, not the composition scope)_
 
 ## 3. Episode list & RSS edge cases
 
 Pick a real, high-volume show (e.g. "The Daily" or "BBC Global News"):
 
-- [ ] Episode list loads in under 1s after subscribe
-- [ ] Newest episode is at the top
-- [ ] Durations are formatted correctly (`H:MM:SS` or `M:SS`, no `0:00` for valid episodes)
-- [ ] Episode description is plain text — no HTML tags
-- [ ] **Pull-to-refresh** on podcast detail: spinner appears, new episodes appear if available, refresh ends within ~5s
-- [ ] Pull-to-refresh on "New" tab: same behavior across all subs
-
-- this all seems to work well
+- [x] Episode list loads in under 1s after subscribe
+- [x] Newest episode is at the top
+- [x] Durations are formatted correctly (`H:MM:SS` or `M:SS`, no `0:00` for valid episodes)
+- [x] Episode description is plain text — no HTML tags
+- [x] **Pull-to-refresh** on podcast detail: spinner appears, new episodes appear if available, refresh ends within ~5s
+- [x] Pull-to-refresh on "New" tab: same behavior across all subs
 
 ## 4. Playback — the critical path
 

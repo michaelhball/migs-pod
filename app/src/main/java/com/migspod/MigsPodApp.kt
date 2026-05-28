@@ -14,12 +14,18 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import com.migspod.data.AppDatabase
 import com.migspod.data.FeedRefreshWorker
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import java.util.concurrent.TimeUnit
 
 class MigsPodApp : Application(), ImageLoaderFactory {
 
     lateinit var database: AppDatabase
         private set
+
+    // Long-running work (downloads, refreshes) tied to app lifetime, not the UI composition.
+    val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()

@@ -41,6 +41,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.migspod.MigsPodApp as App
 import com.migspod.data.Podcast
 import com.migspod.data.PodcastRepository
 import com.migspod.player.PlayerController
@@ -182,7 +183,9 @@ fun EpisodeDetailContent(
             // Download button
             if (ep.downloadPath != null) {
                 OutlinedButton(
-                    onClick = { scope.launch { repository.deleteDownload(ep.id) } },
+                    onClick = {
+                        App.instance.appScope.launch { repository.deleteDownload(ep.id) }
+                    },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -202,10 +205,10 @@ fun EpisodeDetailContent(
             } else if (ep.audioUrl.isNotEmpty()) {
                 OutlinedButton(
                     onClick = {
-                        scope.launch {
-                            isDownloading = true
-                            repository.downloadEpisode(context, ep.id)
-                            isDownloading = false
+                        isDownloading = true
+                        val appCtx = context.applicationContext
+                        App.instance.appScope.launch {
+                            repository.downloadEpisode(appCtx, ep.id)
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),

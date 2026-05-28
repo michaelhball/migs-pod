@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.migspod.MigsPodApp as App
 import com.migspod.data.Episode
 import com.migspod.data.Podcast
 import com.migspod.data.PodcastRepository
@@ -119,10 +120,11 @@ fun NewEpisodesScreen(
                             isDownloading = episode.id in downloadingIds,
                             onClick = { onEpisodeClick(episode.id) },
                             onDownload = {
-                                scope.launch {
-                                    downloadingIds = downloadingIds + episode.id
-                                    repository.downloadEpisode(context, episode.id)
-                                    downloadingIds = downloadingIds - episode.id
+                                downloadingIds = downloadingIds + episode.id
+                                val appCtx = context.applicationContext
+                                val epId = episode.id
+                                App.instance.appScope.launch {
+                                    repository.downloadEpisode(appCtx, epId)
                                 }
                             },
                         )

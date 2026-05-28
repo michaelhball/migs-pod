@@ -45,6 +45,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.migspod.MigsPodApp as App
 import com.migspod.data.Episode
+import com.migspod.ui.components.LinkifiedText
 import com.migspod.data.Podcast
 import com.migspod.data.PodcastRepository
 import com.migspod.player.PlayerController
@@ -158,7 +159,7 @@ private fun PodcastHeader(podcast: Podcast) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(4.dp))
-            Text(
+            LinkifiedText(
                 text = podcast.description,
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = if (expanded) Int.MAX_VALUE else 4,

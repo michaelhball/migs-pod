@@ -46,6 +46,7 @@ import com.migspod.MigsPodApp as App
 import com.migspod.data.Podcast
 import com.migspod.data.PodcastRepository
 import com.migspod.player.PlayerController
+import com.migspod.ui.components.LinkifiedText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -228,7 +229,7 @@ fun EpisodeDetailContent(
             // Description
             if (ep.description.isNotEmpty()) {
                 Spacer(Modifier.height(20.dp))
-                Text(
+                LinkifiedText(
                     text = ep.description,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

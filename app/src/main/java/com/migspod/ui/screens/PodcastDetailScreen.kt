@@ -38,13 +38,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.migspod.MigsPodApp as App
 import com.migspod.data.Episode
 import com.migspod.data.Podcast
 import com.migspod.data.PodcastRepository
+import com.migspod.player.PlayerController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -121,6 +124,7 @@ fun PodcastDetailScreen(
                 items(episodes, key = { it.id }, contentType = { "episode" }) { episode ->
                     EpisodeRow(
                         episode = episode,
+                        repository = repository,
                         onClick = { onEpisodeClick(episode.id) },
                     )
                 }
@@ -169,15 +173,19 @@ private fun PodcastHeader(podcast: Podcast) {
 @Composable
 private fun EpisodeRow(
     episode: Episode,
+    repository: PodcastRepository,
     onClick: () -> Unit,
 ) {
     val dateFormat = remember { SimpleDateFormat("MMM d, yyyy", Locale.getDefault()) }
+    var menuOpen by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(start = 16.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -230,6 +238,50 @@ private fun EpisodeRow(
                         .fillMaxWidth(0.5f)
                         .height(3.dp),
                     color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        Box {
+            IconButton(onClick = { menuOpen = true }) {
+                Icon(Icons.Default.MoreVert, contentDescription = "Episode options")
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(
+                    text = { Text(if (episode.playbackPositionMs > 0 && !episode.isCompleted) "Resume" else "Play") },
+                    onClick = {
+                        menuOpen = false
+                        scope.launch { PlayerController.playEpisode(episode) }
+                    },
+                )
+                if (episode.downloadPath == null && episode.audioUrl.isNotEmpty()) {
+                    DropdownMenuItem(
+                        text = { Text("Download") },
+                        onClick = {
+                            menuOpen = false
+                            val appCtx = context.applicationContext
+                            App.instance.appScope.launch {
+                                repository.downloadEpisode(appCtx, episode.id)
+                            }
+                        },
+                    )
+                }
+                if (episode.downloadPath != null) {
+                    DropdownMenuItem(
+                        text = { Text("Delete download") },
+                        onClick = {
+                            menuOpen = false
+                            App.instance.appScope.launch { repository.deleteDownload(episode.id) }
+                        },
+                    )
+                }
+                DropdownMenuItem(
+                    text = { Text(if (episode.isCompleted) "Mark unplayed" else "Mark played") },
+                    onClick = {
+                        menuOpen = false
+                        App.instance.appScope.launch {
+                            repository.markCompleted(episode.id, !episode.isCompleted)
+                        }
+                    },
                 )
             }
         }

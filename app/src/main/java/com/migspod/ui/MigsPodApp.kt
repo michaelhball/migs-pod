@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.NewReleases
+import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -61,8 +61,8 @@ sealed class Screen(val route: String, val label: String) {
 }
 
 private val bottomBarRoutes = listOf(
-    Screen.Search.route, Screen.NewEpisodes.route,
-    Screen.Library.route, Screen.Downloads.route,
+    Screen.Search.route, Screen.Library.route,
+    Screen.NewEpisodes.route, Screen.Downloads.route,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -109,22 +109,22 @@ fun MigsPodApp() {
                             }
                         )
                         NavigationBarItem(
-                            icon = { Icon(Icons.Default.NewReleases, contentDescription = "New") },
-                            label = { Text("New") },
-                            selected = currentRoute == Screen.NewEpisodes.route,
-                            onClick = {
-                                navController.navigate(Screen.NewEpisodes.route) {
-                                    popUpTo(Screen.Library.route)
-                                }
-                            }
-                        )
-                        NavigationBarItem(
                             icon = { Icon(Icons.Default.Home, contentDescription = "Library") },
                             label = { Text("Library") },
                             selected = currentRoute == Screen.Library.route,
                             onClick = {
                                 navController.navigate(Screen.Library.route) {
                                     popUpTo(Screen.Library.route) { inclusive = true }
+                                }
+                            }
+                        )
+                        NavigationBarItem(
+                            icon = { Icon(Icons.Default.RssFeed, contentDescription = "New") },
+                            label = { Text("New") },
+                            selected = currentRoute == Screen.NewEpisodes.route,
+                            onClick = {
+                                navController.navigate(Screen.NewEpisodes.route) {
+                                    popUpTo(Screen.Library.route)
                                 }
                             }
                         )

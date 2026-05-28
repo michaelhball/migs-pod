@@ -47,6 +47,8 @@ import com.migspod.ui.components.MiniPlayer
 import java.net.URLDecoder
 import java.net.URLEncoder
 
+private data class EpisodeSheetTarget(val episodeId: String, val showDeleteAction: Boolean)
+
 sealed class Screen(val route: String, val label: String) {
     object Library : Screen("library", "Library")
     object NewEpisodes : Screen("new_episodes", "New")
@@ -75,7 +77,7 @@ fun MigsPodApp() {
         PodcastRepository(db.podcastDao(), db.episodeDao())
     }
     val currentEpisodeId by PlaybackState.currentEpisodeId.collectAsStateWithLifecycle()
-    var sheetEpisodeId by remember { mutableStateOf<String?>(null) }
+    var sheetTarget by remember { mutableStateOf<EpisodeSheetTarget?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
 
@@ -163,13 +165,17 @@ fun MigsPodApp() {
                 composable(Screen.NewEpisodes.route) {
                     NewEpisodesScreen(
                         repository = repository,
-                        onEpisodeClick = { episodeId -> sheetEpisodeId = episodeId },
+                        onEpisodeClick = { episodeId ->
+                            sheetTarget = EpisodeSheetTarget(episodeId, showDeleteAction = true)
+                        },
                     )
                 }
                 composable(Screen.Downloads.route) {
                     DownloadsScreen(
                         repository = repository,
-                        onEpisodeClick = { episodeId -> sheetEpisodeId = episodeId },
+                        onEpisodeClick = { episodeId ->
+                            sheetTarget = EpisodeSheetTarget(episodeId, showDeleteAction = false)
+                        },
                     )
                 }
                 composable(Screen.Search.route) {
@@ -197,7 +203,9 @@ fun MigsPodApp() {
                         feedUrl = feedUrl,
                         repository = repository,
                         onBack = { navController.popBackStack() },
-                        onEpisodeClick = { episodeId -> sheetEpisodeId = episodeId },
+                        onEpisodeClick = { episodeId ->
+                            sheetTarget = EpisodeSheetTarget(episodeId, showDeleteAction = true)
+                        },
                     )
                 }
                 composable(Screen.NowPlaying.route) {
@@ -211,15 +219,16 @@ fun MigsPodApp() {
     }
 
     // Episode detail bottom sheet
-    val episodeId = sheetEpisodeId
-    if (episodeId != null) {
+    val target = sheetTarget
+    if (target != null) {
         EpisodeDetailSheet(
-            episodeId = episodeId,
+            episodeId = target.episodeId,
             repository = repository,
             sheetState = sheetState,
-            onDismiss = { sheetEpisodeId = null },
+            showDeleteAction = target.showDeleteAction,
+            onDismiss = { sheetTarget = null },
             onNowPlaying = {
-                sheetEpisodeId = null
+                sheetTarget = null
                 navController.navigate(Screen.NowPlaying.route)
             },
         )

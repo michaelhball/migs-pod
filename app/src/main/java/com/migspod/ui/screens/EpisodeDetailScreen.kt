@@ -3,6 +3,7 @@ package com.migspod.ui.screens
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -58,6 +59,7 @@ fun EpisodeDetailSheet(
     episodeId: String,
     repository: PodcastRepository,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    showDeleteAction: Boolean = true,
     onDismiss: () -> Unit,
     onNowPlaying: () -> Unit,
 ) {
@@ -68,6 +70,7 @@ fun EpisodeDetailSheet(
         EpisodeDetailContent(
             episodeId = episodeId,
             repository = repository,
+            showDeleteAction = showDeleteAction,
             onNowPlaying = onNowPlaying,
         )
     }
@@ -78,6 +81,7 @@ fun EpisodeDetailSheet(
 fun EpisodeDetailContent(
     episodeId: String,
     repository: PodcastRepository,
+    showDeleteAction: Boolean = true,
     onNowPlaying: () -> Unit,
 ) {
     val episodeFlow = remember(episodeId) { repository.getEpisodeFlow(episodeId) }
@@ -97,7 +101,7 @@ fun EpisodeDetailContent(
     if (ep != null) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(start = 16.dp, end = 16.dp, bottom = 32.dp),
         ) {
@@ -182,15 +186,17 @@ fun EpisodeDetailContent(
 
             // Download button
             if (ep.downloadPath != null) {
-                OutlinedButton(
-                    onClick = {
-                        App.instance.appScope.launch { repository.deleteDownload(ep.id) }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Delete download")
+                if (showDeleteAction) {
+                    OutlinedButton(
+                        onClick = {
+                            App.instance.appScope.launch { repository.deleteDownload(ep.id) }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Delete download")
+                    }
                 }
             } else if (isDownloading) {
                 OutlinedButton(

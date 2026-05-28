@@ -179,7 +179,10 @@ fun MigsPodApp() {
                             navController.navigate(Screen.Library.route) {
                                 popUpTo(Screen.Library.route) { inclusive = true }
                             }
-                        }
+                        },
+                        onResultClick = { feedUrl ->
+                            navController.navigate(Screen.PodcastDetail.createRoute(feedUrl))
+                        },
                     )
                 }
                 composable(

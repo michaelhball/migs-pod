@@ -1,5 +1,6 @@
 package com.migspod.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -50,6 +51,7 @@ import kotlinx.coroutines.launch
 fun SearchScreen(
     repository: PodcastRepository,
     onSubscribed: () -> Unit,
+    onResultClick: (feedUrl: String) -> Unit = {},
 ) {
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<SearchResult>>(emptyList()) }
@@ -118,6 +120,18 @@ fun SearchScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .clickable(enabled = !isSubscribing) {
+                            if (isSubscribed) {
+                                onResultClick(result.feedUrl)
+                            } else {
+                                scope.launch {
+                                    subscribingUrl = result.feedUrl
+                                    val res = repository.subscribeToPodcast(result.feedUrl)
+                                    subscribingUrl = null
+                                    if (res.isSuccess) onResultClick(result.feedUrl)
+                                }
+                            }
+                        }
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {

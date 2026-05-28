@@ -156,9 +156,9 @@ Or simpler: wait ~1h with the app installed and Wi-Fi available, then check that
 
 ## 16. Upgrade path
 
-Since v1.0.0 has never shipped, there's no real upgrade scenario yet. After first release, before any v1.1.0:
+Since v0.1.0 has never shipped, there's no real upgrade scenario yet. After first release, before any v0.2.0:
 
-- [ ] Install old version (`adb install -r app-debug-1.0.0.apk`)
+- [ ] Install old version (`adb install -r app-debug-0.1.0.apk`)
 - [ ] Subscribe to 2 podcasts, listen to 30s of one, download one
 - [ ] Install new version on top
 - [ ] Verify: subscriptions intact, playback position preserved, download still works offline

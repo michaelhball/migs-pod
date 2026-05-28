@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Lint: Exported service without permission
 - Lint: Uri.parse instead of toUri() KTX extension
 
-## [1.0.0] - Unreleased
+## [0.1.0] - Unreleased
 
 ### Added
 - Search podcasts via iTunes Search API

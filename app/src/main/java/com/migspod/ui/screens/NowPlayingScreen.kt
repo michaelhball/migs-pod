@@ -1,18 +1,24 @@
 package com.migspod.ui.screens
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Forward30
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
@@ -32,15 +38,18 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -50,8 +59,10 @@ import com.migspod.player.PlaybackState
 import com.migspod.player.PlayerController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,7 +93,9 @@ fun NowPlayingScreen(
         }
     }
 
-    // Poll player state
+    // Poll player state. isPlaying tracks playWhenReady (intent) rather than
+    // isPlaying (actual) so the play/pause icon doesn't flip while a seek
+    // re-buffers.
     LaunchedEffect(player) {
         while (true) {
             val p = player
@@ -91,63 +104,86 @@ fun NowPlayingScreen(
                     currentPosition = p.currentPosition
                 }
                 duration = p.duration.coerceAtLeast(0)
-                isPlaying = p.isPlaying
+                isPlaying = p.playWhenReady
             }
             delay(250)
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Background artwork
-        AsyncImage(
-            model = artworkUrl,
-            contentDescription = null,
+    // Swipe-down-to-dismiss, Castbox-style.
+    val scope = rememberCoroutineScope()
+    val dragY = remember { Animatable(0f) }
+    val dismissThresholdPx = with(LocalDensity.current) { 180.dp.toPx() }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .drawWithCache {
-                    val gradient = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.3f),
-                            Color.Black.copy(alpha = 0.85f),
-                        ),
+                .offset { IntOffset(0, dragY.value.roundToInt()) }
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures(
+                        onVerticalDrag = { change, dragAmount ->
+                            change.consume()
+                            scope.launch {
+                                dragY.snapTo((dragY.value + dragAmount).coerceAtLeast(0f))
+                            }
+                        },
+                        onDragEnd = {
+                            if (dragY.value > dismissThresholdPx) onBack()
+                            else scope.launch { dragY.animateTo(0f) }
+                        },
+                        onDragCancel = {
+                            scope.launch { dragY.animateTo(0f) }
+                        },
                     )
-                    onDrawWithContent {
-                        drawContent()
-                        drawRect(gradient)
-                    }
                 },
-            contentScale = ContentScale.Crop,
-        )
-
-        Column(modifier = Modifier.fillMaxSize()) {
+        ) {
             TopAppBar(
                 title = {},
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White,
+                            Icons.Default.KeyboardArrowDown,
+                            contentDescription = "Close",
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
+                    containerColor = MaterialTheme.colorScheme.background,
                 ),
             )
 
-            // Push content toward bottom
-            Spacer(Modifier.weight(1f))
-
             Column(
-                modifier = Modifier.padding(horizontal = 24.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
             ) {
+                // Album artwork — contained, not a full-bleed background.
+                AsyncImage(
+                    model = artworkUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth(0.8f)
+                        .aspectRatio(1f)
+                        .shadow(12.dp, RoundedCornerShape(20.dp))
+                        .clip(RoundedCornerShape(20.dp)),
+                    contentScale = ContentScale.Crop,
+                )
+
+                Spacer(Modifier.height(40.dp))
+
                 // Title & podcast
                 Text(
                     text = episode?.title ?: "",
                     style = MaterialTheme.typography.headlineSmall,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,
@@ -157,12 +193,12 @@ fun NowPlayingScreen(
                 Text(
                     text = podcastTitle,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                Spacer(Modifier.height(32.dp))
+                Spacer(Modifier.height(28.dp))
 
                 // Seek bar
                 val sliderValue = if (isSeeking) seekPosition
@@ -183,9 +219,9 @@ fun NowPlayingScreen(
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = SliderDefaults.colors(
-                        thumbColor = Color.White,
-                        activeTrackColor = Color.White,
-                        inactiveTrackColor = Color.White.copy(alpha = 0.3f),
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant,
                     ),
                 )
 
@@ -199,12 +235,12 @@ fun NowPlayingScreen(
                             if (isSeeking) (seekPosition * duration).toLong() else currentPosition
                         ),
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.7f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
                         text = formatTime(duration),
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.7f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
 
@@ -224,7 +260,7 @@ fun NowPlayingScreen(
                             Icons.Default.Replay10,
                             contentDescription = "Back 10s",
                             modifier = Modifier.size(40.dp),
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.onSurface,
                         )
                     }
                     IconButton(
@@ -235,7 +271,7 @@ fun NowPlayingScreen(
                             imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = if (isPlaying) "Pause" else "Play",
                             modifier = Modifier.size(64.dp),
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.onSurface,
                         )
                     }
                     IconButton(
@@ -246,7 +282,7 @@ fun NowPlayingScreen(
                             Icons.Default.Forward30,
                             contentDescription = "Forward 30s",
                             modifier = Modifier.size(40.dp),
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.onSurface,
                         )
                     }
                 }

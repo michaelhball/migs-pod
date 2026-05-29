@@ -42,9 +42,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.migspod.MigsPodApp as App
 import com.migspod.data.PodcastRepository
 import com.migspod.data.SearchResult
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -124,11 +127,16 @@ fun SearchScreen(
                             if (isSubscribed) {
                                 onResultClick(result.feedUrl)
                             } else {
-                                scope.launch {
-                                    subscribingUrl = result.feedUrl
-                                    val res = repository.subscribeToPodcast(result.feedUrl)
-                                    subscribingUrl = null
-                                    if (res.isSuccess) onResultClick(result.feedUrl)
+                                subscribingUrl = result.feedUrl
+                                val feedUrl = result.feedUrl
+                                // Run on the app scope so navigating away mid-fetch
+                                // doesn't cancel the subscribe (which would skip the
+                                // episode insert and leave the detail screen empty).
+                                App.instance.appScope.launch {
+                                    val res = repository.subscribeToPodcast(feedUrl)
+                                    if (res.isSuccess) {
+                                        withContext(Dispatchers.Main) { onResultClick(feedUrl) }
+                                    }
                                 }
                             }
                         }
@@ -173,10 +181,10 @@ fun SearchScreen(
                         )
                     } else {
                         IconButton(onClick = {
-                            scope.launch {
-                                subscribingUrl = result.feedUrl
-                                repository.subscribeToPodcast(result.feedUrl)
-                                subscribingUrl = null
+                            subscribingUrl = result.feedUrl
+                            val feedUrl = result.feedUrl
+                            App.instance.appScope.launch {
+                                repository.subscribeToPodcast(feedUrl)
                             }
                         }) {
                             Icon(Icons.Default.Add, contentDescription = "Subscribe")

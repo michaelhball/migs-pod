@@ -36,6 +36,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -68,10 +69,21 @@ fun PodcastDetailScreen(
     var podcast by remember { mutableStateOf<Podcast?>(null) }
     var isRefreshing by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
+    var downloadingIds by remember { mutableStateOf(emptySet<String>()) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     LaunchedEffect(feedUrl) {
         podcast = withContext(Dispatchers.IO) { repository.getPodcast(feedUrl) }
+    }
+
+    // Clear the "Downloading…" hint once a download lands (downloadPath set).
+    LaunchedEffect(episodes) {
+        if (downloadingIds.isNotEmpty()) {
+            downloadingIds = downloadingIds.filter { id ->
+                episodes.find { it.id == id }?.downloadPath == null
+            }.toSet()
+        }
     }
 
     fun doRefresh() {
@@ -126,7 +138,15 @@ fun PodcastDetailScreen(
                     EpisodeRow(
                         episode = episode,
                         repository = repository,
+                        isDownloading = episode.id in downloadingIds,
                         onClick = { onEpisodeClick(episode.id) },
+                        onDownload = {
+                            downloadingIds = downloadingIds + episode.id
+                            val appCtx = context.applicationContext
+                            App.instance.appScope.launch {
+                                repository.downloadEpisode(appCtx, episode.id)
+                            }
+                        },
                     )
                 }
             }
@@ -175,12 +195,20 @@ private fun PodcastHeader(podcast: Podcast) {
 private fun EpisodeRow(
     episode: Episode,
     repository: PodcastRepository,
+    isDownloading: Boolean,
     onClick: () -> Unit,
+    onDownload: () -> Unit,
 ) {
     val dateFormat = remember { SimpleDateFormat("MMM d, yyyy", Locale.getDefault()) }
     var menuOpen by remember { mutableStateOf(false) }
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val separator = @Composable {
+        Text(
+            text = " · ",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 
     Row(
         modifier = Modifier
@@ -195,22 +223,34 @@ private fun EpisodeRow(
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                color = if (episode.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant
-                else MaterialTheme.colorScheme.onSurface,
+                color = MaterialTheme.colorScheme.onSurface,
+                // Dim listened episodes so they read as "done" at a glance.
+                modifier = Modifier.alpha(if (episode.isCompleted) 0.5f else 1f),
             )
             Spacer(Modifier.height(2.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (episode.isCompleted) {
+                    Text(
+                        text = "✓ Played",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    separator()
+                }
                 if (episode.downloadPath != null) {
                     Text(
                         text = "Downloaded",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                     )
+                    separator()
+                } else if (isDownloading) {
                     Text(
-                        text = " · ",
+                        text = "Downloading…",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    separator()
                 }
                 if (episode.publishedDate > 0) {
                     Text(
@@ -254,15 +294,12 @@ private fun EpisodeRow(
                         scope.launch { PlayerController.playEpisode(episode) }
                     },
                 )
-                if (episode.downloadPath == null && episode.audioUrl.isNotEmpty()) {
+                if (episode.downloadPath == null && !isDownloading && episode.audioUrl.isNotEmpty()) {
                     DropdownMenuItem(
                         text = { Text("Download") },
                         onClick = {
                             menuOpen = false
-                            val appCtx = context.applicationContext
-                            App.instance.appScope.launch {
-                                repository.downloadEpisode(appCtx, episode.id)
-                            }
+                            onDownload()
                         },
                     )
                 }

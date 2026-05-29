@@ -35,6 +35,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -168,11 +169,18 @@ private fun NewEpisodeRow(
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                color = if (episode.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant
-                else MaterialTheme.colorScheme.onSurface,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.alpha(if (episode.isCompleted) 0.5f else 1f),
             )
             Spacer(Modifier.height(2.dp))
-            Row {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (episode.isCompleted) {
+                    Text(
+                        text = "✓ Played · ",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
                 Text(
                     text = podcastTitle,
                     style = MaterialTheme.typography.labelSmall,

@@ -43,6 +43,7 @@ import com.migspod.ui.screens.NewEpisodesScreen
 import com.migspod.ui.screens.NowPlayingScreen
 import com.migspod.ui.screens.PodcastDetailScreen
 import com.migspod.ui.screens.SearchScreen
+import com.migspod.ui.components.BatteryOptimizationNudge
 import com.migspod.ui.components.MiniPlayer
 import java.net.URLDecoder
 import java.net.URLEncoder
@@ -217,6 +218,10 @@ fun MigsPodApp() {
             }
         }
     }
+
+    // One-time prompt to exempt the app from battery optimization so
+    // background playback survives the app being swiped from recents.
+    BatteryOptimizationNudge()
 
     // Episode detail bottom sheet
     val target = sheetTarget

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Custom launcher icon: bunny ears over headphones, a cool-gradient sibling to the migs-music icon (replaces the default placeholder)
+- One-time prompt to exempt the app from battery optimization, so background playback survives the app being swiped from recents on aggressive OEMs
 - Release signing configuration
 - ProGuard/R8 rules for dependencies
 - GitHub Actions CI (unit tests, lint, build)

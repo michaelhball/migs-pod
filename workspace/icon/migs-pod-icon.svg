@@ -49,17 +49,17 @@
     <path d="M 262 222 Q 280 175 286 124 Q 291 90 278 86 Q 267 96 264 142 Q 261 182 258 222 Z" fill="url(#innerEar)"/>
 
     <!-- Headphone headband: bold arc connecting the two cups -->
-    <path d="M 120 320 Q 256 150 392 320" fill="none" stroke="url(#figure)"
-          stroke-width="36" stroke-linecap="round"/>
+    <path d="M 136 316 Q 256 168 376 316" fill="none" stroke="url(#figure)"
+          stroke-width="34" stroke-linecap="round"/>
 
     <!-- Left ear cup -->
-    <rect x="74" y="300" width="92" height="132" rx="40" fill="url(#figure)"/>
-    <rect x="98" y="324" width="44" height="84" rx="22" fill="url(#pad)"/>
-    <ellipse cx="104" cy="332" rx="20" ry="26" fill="url(#gloss)"/>
+    <rect x="96" y="292" width="80" height="118" rx="36" fill="url(#figure)"/>
+    <rect x="116" y="316" width="40" height="74" rx="20" fill="url(#pad)"/>
+    <ellipse cx="122" cy="324" rx="18" ry="24" fill="url(#gloss)"/>
 
     <!-- Right ear cup -->
-    <rect x="346" y="300" width="92" height="132" rx="40" fill="url(#figure)"/>
-    <rect x="370" y="324" width="44" height="84" rx="22" fill="url(#pad)"/>
-    <ellipse cx="376" cy="332" rx="20" ry="26" fill="url(#gloss)"/>
+    <rect x="336" y="292" width="80" height="118" rx="36" fill="url(#figure)"/>
+    <rect x="356" y="316" width="40" height="74" rx="20" fill="url(#pad)"/>
+    <ellipse cx="362" cy="324" rx="18" ry="24" fill="url(#gloss)"/>
   </g>
 </svg>

@@ -29,11 +29,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
@@ -41,9 +41,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.migspod.MigsPodApp as App
 import com.migspod.data.Episode
 import com.migspod.data.Podcast
 import com.migspod.data.PodcastRepository
+import com.migspod.player.PlayerController
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -67,8 +69,7 @@ fun DownloadsScreen(
     onEpisodeClick: (String) -> Unit,
 ) {
     val downloadedEpisodes by repository.getDownloadedEpisodes().collectAsStateWithLifecycle(emptyList())
-    val scope = rememberCoroutineScope()
-    var sortMode by rememberSaveable { mutableStateOf(SortMode.GROUPED) }
+    var sortMode by rememberSaveable { mutableStateOf(SortMode.BY_DATE) }
 
     // Cache podcast metadata — single batch query
     var podcastCache by remember { mutableStateOf<Map<String, Podcast>>(emptyMap()) }
@@ -175,7 +176,10 @@ fun DownloadsScreen(
                             indented = true,
                             onClick = { onEpisodeClick(episode.id) },
                             onDeleteDownload = {
-                                scope.launch { repository.deleteDownload(episode.id) }
+                                // If we're deleting what's currently playing, stop —
+                                // the file is about to be removed out from under it.
+                                PlayerController.stopIfCurrent(episode.id)
+                                App.instance.appScope.launch { repository.deleteDownload(episode.id) }
                             },
                         )
                     }
@@ -194,7 +198,8 @@ fun DownloadsScreen(
                         indented = false,
                         onClick = { onEpisodeClick(episode.id) },
                         onDeleteDownload = {
-                            scope.launch { repository.deleteDownload(episode.id) }
+                            PlayerController.stopIfCurrent(episode.id)
+                            App.instance.appScope.launch { repository.deleteDownload(episode.id) }
                         },
                     )
                 }
@@ -244,11 +249,18 @@ private fun DownloadedEpisodeRow(
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                color = if (episode.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant
-                else MaterialTheme.colorScheme.onSurface,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.alpha(if (episode.isCompleted) 0.5f else 1f),
             )
             Spacer(Modifier.height(2.dp))
             Row {
+                if (episode.isCompleted) {
+                    Text(
+                        text = "✓ Played · ",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
                 if (showPodcastInfo && podcastTitle.isNotEmpty()) {
                     Text(
                         text = podcastTitle,

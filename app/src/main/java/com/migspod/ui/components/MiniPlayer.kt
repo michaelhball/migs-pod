@@ -71,7 +71,7 @@ fun MiniPlayer(
             val p = player
             if (p != null && p.duration > 0) {
                 progress = p.currentPosition.toFloat() / p.duration.toFloat()
-                isPlaying = p.isPlaying
+                isPlaying = p.playWhenReady
             }
             delay(500)
         }

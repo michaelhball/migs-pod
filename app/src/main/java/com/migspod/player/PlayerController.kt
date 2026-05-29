@@ -61,7 +61,10 @@ object PlayerController {
 
     fun togglePlayPause() {
         val controller = mediaController ?: return
-        if (controller.isPlaying) {
+        // Use playWhenReady (intent) rather than isPlaying (actual): while the
+        // player is buffering after a seek, isPlaying is false even though the
+        // user means it to be playing, which would otherwise flip play→pause.
+        if (controller.playWhenReady) {
             controller.pause()
         } else {
             controller.play()

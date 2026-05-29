@@ -34,6 +34,10 @@ class PlaybackService : MediaSessionService() {
                 true // handleAudioFocus
             )
             .setHandleAudioBecomingNoisy(true)
+            // Surfaces -10s / +30s (rewind/fast-forward) buttons in the media
+            // notification and on the lockscreen, matching the in-app controls.
+            .setSeekBackIncrementMs(10_000)
+            .setSeekForwardIncrementMs(30_000)
             .build()
 
         player = exoPlayer

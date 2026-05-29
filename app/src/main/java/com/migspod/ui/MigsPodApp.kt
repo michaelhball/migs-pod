@@ -212,7 +212,12 @@ fun MigsPodApp() {
                 composable(Screen.NowPlaying.route) {
                     NowPlayingScreen(
                         repository = repository,
-                        onBack = { navController.popBackStack() }
+                        onBack = { navController.popBackStack() },
+                        onShowDetails = {
+                            currentEpisodeId?.let { id ->
+                                sheetTarget = EpisodeSheetTarget(id, showDeleteAction = true)
+                            }
+                        },
                     )
                 }
             }

@@ -29,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -69,8 +70,15 @@ import kotlin.math.roundToInt
 fun NowPlayingScreen(
     repository: PodcastRepository,
     onBack: () -> Unit,
+    onShowDetails: () -> Unit = {},
 ) {
     val currentEpisodeId by PlaybackState.currentEpisodeId.collectAsStateWithLifecycle()
+
+    // When the episode ends (or playback is cleared), the id goes null — close
+    // this screen rather than leaving it showing a 0:00 / empty player.
+    LaunchedEffect(currentEpisodeId) {
+        if (currentEpisodeId == null) onBack()
+    }
     val player by PlaybackState.player.collectAsStateWithLifecycle()
     var episode by remember { mutableStateOf<Episode?>(null) }
     var podcastTitle by remember { mutableStateOf("") }
@@ -287,7 +295,13 @@ fun NowPlayingScreen(
                     }
                 }
 
-                Spacer(Modifier.height(48.dp))
+                Spacer(Modifier.height(12.dp))
+
+                TextButton(onClick = onShowDetails) {
+                    Text("Episode details")
+                }
+
+                Spacer(Modifier.height(24.dp))
             }
         }
     }

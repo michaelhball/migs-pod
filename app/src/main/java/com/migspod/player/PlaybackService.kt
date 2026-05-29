@@ -6,6 +6,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.migspod.MigsPodApp
@@ -14,6 +15,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+private const val MEDIA_NOTIFICATION_ID = 1001
 
 class PlaybackService : MediaSessionService() {
 
@@ -25,6 +28,17 @@ class PlaybackService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
+        // Install Media3's default notification provider eagerly. By default Media3
+        // does this lazily once playback flips isPlaying; on some OEMs that lazy path
+        // doesn't fire reliably and no media notification ever appears. Pinning it to
+        // our own channel + a fixed id makes the behaviour deterministic.
+        setMediaNotificationProvider(
+            DefaultMediaNotificationProvider.Builder(this)
+                .setChannelId(MigsPodApp.PLAYBACK_CHANNEL_ID)
+                .setNotificationId(MEDIA_NOTIFICATION_ID)
+                .build()
+        )
+
         val exoPlayer = ExoPlayer.Builder(this)
             .setAudioAttributes(
                 AudioAttributes.Builder()

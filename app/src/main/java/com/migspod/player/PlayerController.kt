@@ -2,18 +2,23 @@ package com.migspod.player
 
 import android.content.ComponentName
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
 import com.google.common.util.concurrent.MoreExecutors
-import androidx.core.net.toUri
 import com.migspod.MigsPodApp
 import com.migspod.data.Episode
 import com.migspod.data.Podcast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 
 object PlayerController {
 
@@ -60,6 +65,7 @@ object PlayerController {
         controller.setMediaItem(buildMediaItem(episode, podcast), episode.playbackPositionMs)
         controller.prepare()
         controller.play()
+        embedArtwork(podcast?.artworkUrl, episode.id)
     }
 
     /** Stop playback if [episodeId] is what's currently loaded (e.g. its download was deleted). */
@@ -110,12 +116,52 @@ object PlayerController {
                 MediaMetadata.Builder()
                     .setTitle(episode.title)
                     .setArtist(podcast?.title ?: "")
-                    .setArtworkUri(
-                        podcast?.artworkUrl?.takeIf { it.isNotEmpty() }?.toUri()
-                    )
+                    // Artwork is attached as raw bytes by embedArtwork() after the item
+                    // loads — NOT as a URI. OEM bitmap loaders frequently fail to resolve
+                    // a remote artworkUri for the lockscreen/notification; once they report
+                    // "no art" the cards stay blank. setArtworkData is the reliable source.
                     .build()
             )
             .build()
+
+    /**
+     * Fetches the podcast artwork (via Coil, so it's cached/shared with the UI) and
+     * attaches the decoded bytes to the live media item's metadata, which is what the
+     * system lockscreen / notification / Quick Settings actually render.
+     */
+    private fun embedArtwork(artworkUrl: String?, episodeId: String) {
+        val url = artworkUrl?.takeIf { it.isNotEmpty() } ?: return
+        MigsPodApp.instance.appScope.launch {
+            val bytes = loadArtworkBytes(url) ?: return@launch
+            withContext(Dispatchers.Main) {
+                val controller = mediaController ?: return@withContext
+                val current = controller.currentMediaItem ?: return@withContext
+                if (current.mediaId != episodeId) return@withContext // moved on already
+                val metadata = current.mediaMetadata.buildUpon()
+                    .setArtworkData(bytes, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+                    .build()
+                controller.replaceMediaItem(
+                    controller.currentMediaItemIndex,
+                    current.buildUpon().setMediaMetadata(metadata).build(),
+                )
+            }
+        }
+    }
+
+    private suspend fun loadArtworkBytes(url: String): ByteArray? = withContext(Dispatchers.IO) {
+        runCatching {
+            val context = MigsPodApp.instance
+            val request = ImageRequest.Builder(context)
+                .data(url)
+                .allowHardware(false) // need a readable software bitmap to compress
+                .build()
+            val result = context.imageLoader.execute(request) as? SuccessResult
+            val bitmap = (result?.drawable as? BitmapDrawable)?.bitmap ?: return@runCatching null
+            val out = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+            out.toByteArray().takeIf { it.isNotEmpty() }
+        }.getOrNull()
+    }
 
     private fun saveLastEpisode(episodeId: String) {
         MigsPodApp.instance
@@ -146,6 +192,7 @@ object PlayerController {
                     episode.playbackPositionMs,
                 )
                 controller.prepare() // ready but paused (playWhenReady stays false)
+                embedArtwork(podcast?.artworkUrl, episode.id)
             }
         }
     }

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Custom launcher icon: bunny ears over headphones, a cool-gradient sibling to the migs-music icon (replaces the default placeholder)
 - Release signing configuration
 - ProGuard/R8 rules for dependencies
 - GitHub Actions CI (unit tests, lint, build)

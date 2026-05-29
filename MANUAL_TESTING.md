@@ -73,24 +73,28 @@ Pick a real, high-volume show (e.g. "The Daily" or "BBC Global News"):
 
 ## 6. Position persistence (the headline feature)
 
+_Original pass: BROKEN — after quitting, the mini-player was gone on relaunch (PlaybackState is in-memory and was never restored). Fixed: the last-played episode is now saved and restored on launch (paused, at its saved position), so the mini-player returns and resumes. **Re-test these:**_
+
 - [ ] Play an episode for ~30s, pause, kill the app from recents
-- [ ] Re-open app → episode shows progress indicator at ~30s
+- [ ] Re-open app → mini-player is back, pointing at that episode _(fixed: restore-on-launch)_
 - [ ] Resume → audio starts at ~30s, not 0:00
-- [ ] **Force-quit via Settings → Apps → Force stop** → re-open → progress still saved
-- [ ] Listen for ~5 minutes, swipe app away from recents *while playing* — playback continues in the background
-- [ ] After ~10s in background, pull notification — controls still work
+- [ ] **Force-quit via Settings → Apps → Force stop** → re-open → mini-player restored, resumes at saved position
+- [ ] Listen for ~5 minutes, swipe app away from recents *while playing* — playback continues in the background — _⚠️ on this ColorOS/OPPO device the OS kills the swiped app's service even though it's a proper foreground service. Background playback can't be guaranteed without exempting MigsPod from battery optimization (Settings → Battery → MigsPod → Allow background activity / don't optimize). After a kill, relaunch now restores the session so nothing is lost._
+- [ ] After ~10s in background, pull notification → media card present with working controls _(confirmed at framework level: foreground notification `channel=default_channel_id, category=transport`; ColorOS shows it in the shade's media area, not as a banner)_
 
 ## 7. Episode completion
 
 - [ ] Skip to last ~5 seconds of an episode using +30 button repeatedly
 - [ ] Let it finish naturally
-- [ ] **No autoplay** — playback stops, no next episode starts
-- [ ] Episode appears greyed out / marked complete in the podcast list
+- [x] **No autoplay** — playback stops, no next episode starts
+- [x] **Player closes when the episode finishes** — mini-player disappears at end-of-episode _(fixed: was staying open on a finished item)_
+- [x] Episode is marked **✓ Played** and dimmed in the podcast list and New feed _(fixed: the old grey-on-grey was too subtle; now a "✓ Played" chip + 50% dimmed title)_
 - [ ] Episode is **NOT** deleted (per design)
-- [ ] Completed episode does NOT appear in "in progress" sections
+- [x] Completed episode does NOT appear in "in progress" sections
 
 ## 8. Downloads
 
+- [x] From a podcast episode row, tap **Download** (kebab) → row shows a "Downloading…" chip, then "Downloaded" when done _(fixed: there was no in-progress indicator in this list)_
 - [ ] From Episode Detail, tap **Download** → progress feedback (or button switches to "Delete download" when done)
 - [ ] Downloaded episode shows in **Downloads** tab
 - [ ] Toggle **grouped / by date** sort — both work

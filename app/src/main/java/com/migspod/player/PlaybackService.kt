@@ -6,6 +6,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -55,7 +56,23 @@ class PlaybackService : MediaSessionService() {
             .build()
 
         player = exoPlayer
-        mediaSession = MediaSession.Builder(this, exoPlayer).build()
+
+        // Replace the default skip-to-prev/next buttons (useless for single-episode
+        // podcast playback — "previous" just restarts the episode) with rewind 10s /
+        // forward 30s, on the notification and lockscreen. These map to the player's
+        // built-in SEEK_BACK / SEEK_FORWARD commands (increments set above).
+        val rewindButton = CommandButton.Builder(CommandButton.ICON_SKIP_BACK_10)
+            .setPlayerCommand(Player.COMMAND_SEEK_BACK)
+            .setDisplayName("Rewind 10 seconds")
+            .build()
+        val forwardButton = CommandButton.Builder(CommandButton.ICON_SKIP_FORWARD_30)
+            .setPlayerCommand(Player.COMMAND_SEEK_FORWARD)
+            .setDisplayName("Fast-forward 30 seconds")
+            .build()
+
+        mediaSession = MediaSession.Builder(this, exoPlayer)
+            .setMediaButtonPreferences(listOf(rewindButton, forwardButton))
+            .build()
 
         // Save playback position periodically
         exoPlayer.addListener(object : Player.Listener {

@@ -48,27 +48,28 @@ Pick a real, high-volume show (e.g. "The Daily" or "BBC Global News"):
 
 ## 4. Playback — the critical path
 
-- [ ] Tap an episode → bottom-sheet (EpisodeDetail) slides up
-- [ ] Tap Play → audio starts within ~2s
-- [ ] **Media notification** appears with title, podcast name, artwork
-- [ ] Notification play/pause toggles audio
-- [ ] **Lockscreen controls** work (Android lockscreen media controls)
-- [ ] **Bluetooth headphone play/pause button** toggles audio
-- [ ] **Audio focus**: starting playback while a YouTube/Spotify track is playing → other app pauses
-- [ ] **Becoming-noisy**: pull out headphones during playback → playback pauses (not continues out loud)
-- [ ] **Phone call** during playback → playback pauses, resumes (or stays paused) after call
+- [x] Tap an episode → bottom-sheet (EpisodeDetail) slides up
+- [x] Tap Play → audio starts within ~2s
+- [ ] **Media notification** appears with title, podcast name, artwork — _user saw none. Device is ColorOS (OPPO); logcat shows its Fluid Cloud "audio control panel" picking up `com.migspod`, so the media session IS published — ColorOS renders media as a status-bar capsule + a media card inside the shade rather than a standard banner. **To confirm:** play, then pull down the notification shade and look for the media card; also check the lockscreen. If still nothing, check Settings → Apps → MigsPod → Notifications is enabled._
+- [ ] Notification play/pause toggles audio — _pending the above_
+- [ ] **Lockscreen controls** work (Android lockscreen media controls) — _not yet tested_
+- [ ] **Bluetooth headphone play/pause button** toggles audio — _not yet tested_
+- [x] **Audio focus**: starting playback while a YouTube/Spotify track is playing → other app pauses
+- [ ] **Becoming-noisy**: pull out headphones during playback → playback pauses (not continues out loud) — _can't test right now_
+- [ ] **Phone call** during playback → playback pauses, resumes (or stays paused) after call — _can't test right now_
 
 ## 5. Now Playing screen
 
-- [ ] Tap mini-player → Now Playing slides up
-- [ ] Artwork shows full-bleed with gradient overlay
-- [ ] Seek bar tracks position smoothly (no jitter every 250ms)
-- [ ] **Scrub the seek bar** to ~50% → position jumps, audio resumes at that point
-- [ ] **-10s button** seeks backward exactly 10s (not more, not less)
-- [ ] **+30s button** seeks forward exactly 30s
-- [ ] Time labels show current / total, formatted as `0:00` or `0:00:00` correctly
-- [ ] Back arrow returns to previous screen, audio keeps playing
-- [ ] Swipe-down (system gesture) — verify expected behavior
+- [x] Tap mini-player → Now Playing slides up
+- [x] Artwork shows as a contained, rounded album-art image above the title/controls _(fixed: was a zoomed-in full-bleed background)_
+- [x] Seek bar tracks position smoothly (no jitter every 250ms)
+- [x] **Scrub the seek bar** to ~50% → position jumps, audio resumes at that point
+- [x] **-10s button** seeks backward exactly 10s (not more, not less)
+- [x] **+30s button** seeks forward exactly 30s
+- [x] Time labels show current / total, formatted as `0:00` or `0:00:00` correctly
+- [x] Play/pause button stays stable when tapping ±10/30s _(fixed: icon now tracks playWhenReady, no flicker on seek)_
+- [x] Back arrow (now a chevron-down) returns to previous screen, audio keeps playing
+- [x] **Swipe-down to dismiss** → drag the screen down to pop back _(fixed: previously did nothing)_
 
 ## 6. Position persistence (the headline feature)
 

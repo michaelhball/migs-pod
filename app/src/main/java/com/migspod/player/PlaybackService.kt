@@ -59,6 +59,11 @@ class PlaybackService : MediaSessionService() {
                 PlaybackState.playbackState.value = playbackState
                 if (playbackState == Player.STATE_ENDED) {
                     markCurrentCompleted()
+                    // No autoplay: the episode is done, so tear the player down.
+                    // Clearing the media item lets Media3 drop the foreground
+                    // notification, and nulling the episode id hides the mini-player.
+                    PlaybackState.currentEpisodeId.value = null
+                    player?.clearMediaItems()
                 }
             }
 

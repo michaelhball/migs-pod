@@ -54,12 +54,19 @@ object PlayerController {
         }
 
         val controller = mediaController ?: return
-        controller.setMediaItem(buildMediaItem(episode, podcast))
-        if (episode.playbackPositionMs > 0) {
-            controller.seekTo(episode.playbackPositionMs)
-        }
+        // Pass the start position into setMediaItem rather than seekTo() afterwards —
+        // a seek on a not-yet-prepared item via MediaController is dropped, which is
+        // why resume was starting from 0.
+        controller.setMediaItem(buildMediaItem(episode, podcast), episode.playbackPositionMs)
         controller.prepare()
         controller.play()
+    }
+
+    /** Stop playback if [episodeId] is what's currently loaded (e.g. its download was deleted). */
+    fun stopIfCurrent(episodeId: String) {
+        if (PlaybackState.currentEpisodeId.value == episodeId) {
+            stop()
+        }
     }
 
     fun togglePlayPause() {
@@ -134,8 +141,10 @@ object PlayerController {
                 // Something may have started playing while we were loading.
                 if (controller.mediaItemCount > 0) return@withContext
                 PlaybackState.currentEpisodeId.value = episode.id
-                controller.setMediaItem(buildMediaItem(episode, podcast))
-                controller.seekTo(episode.playbackPositionMs)
+                controller.setMediaItem(
+                    buildMediaItem(episode, podcast),
+                    episode.playbackPositionMs,
+                )
                 controller.prepare() // ready but paused (playWhenReady stays false)
             }
         }

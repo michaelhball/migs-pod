@@ -50,9 +50,9 @@ Pick a real, high-volume show (e.g. "The Daily" or "BBC Global News"):
 
 - [x] Tap an episode → bottom-sheet (EpisodeDetail) slides up
 - [x] Tap Play → audio starts within ~2s
-- [ ] **Media notification** appears with title, podcast name, artwork — _user saw none. Device is ColorOS (OPPO); logcat shows its Fluid Cloud "audio control panel" picking up `com.migspod`, so the media session IS published — ColorOS renders media as a status-bar capsule + a media card inside the shade rather than a standard banner. **To confirm:** play, then pull down the notification shade and look for the media card; also check the lockscreen. If still nothing, check Settings → Apps → MigsPod → Notifications is enabled._
-- [ ] Notification play/pause toggles audio — _pending the above_
-- [ ] **Lockscreen controls** work (Android lockscreen media controls) — _not yet tested_
+- [~] **Media notification** — confirmed posted at the framework level (`adb dumpsys` shows the foreground notification `channel=default_channel_id, category=transport, 2 actions`) and lockscreen controls work, so the session/notification objectively exist. On this ColorOS/OPPO device the shade media card is suppressed by the OEM even though the notification is posted — not an app bug. Nothing more to do in code.
+- [ ] Notification play/pause toggles audio — _OEM-dependent; lockscreen controls confirmed working_
+- [~] **Lockscreen controls** work — yes; **now with -10s/+30s buttons** _(fixed: declared seek increments on the player)_. ⚠️ album art not shown on this device's lockscreen — appears OEM-dependent (artwork URI is set on the session metadata).
 - [ ] **Bluetooth headphone play/pause button** toggles audio — _not yet tested_
 - [x] **Audio focus**: starting playback while a YouTube/Spotify track is playing → other app pauses
 - [ ] **Becoming-noisy**: pull out headphones during playback → playback pauses (not continues out loud) — _can't test right now_
@@ -70,14 +70,15 @@ Pick a real, high-volume show (e.g. "The Daily" or "BBC Global News"):
 - [x] Play/pause button stays stable when tapping ±10/30s _(fixed: icon now tracks playWhenReady, no flicker on seek)_
 - [x] Back arrow (now a chevron-down) returns to previous screen, audio keeps playing
 - [x] **Swipe-down to dismiss** → drag the screen down to pop back _(fixed: previously did nothing)_
+- [x] **"Episode details" button** at the bottom opens the full episode detail sheet _(added)_
 
 ## 6. Position persistence (the headline feature)
 
 _Original pass: BROKEN — after quitting, the mini-player was gone on relaunch (PlaybackState is in-memory and was never restored). Fixed: the last-played episode is now saved and restored on launch (paused, at its saved position), so the mini-player returns and resumes. **Re-test these:**_
 
 - [ ] Play an episode for ~30s, pause, kill the app from recents
-- [ ] Re-open app → mini-player is back, pointing at that episode _(fixed: restore-on-launch)_
-- [ ] Resume → audio starts at ~30s, not 0:00
+- [x] Re-open app → mini-player is back, pointing at that episode _(fixed: restore-on-launch)_
+- [ ] Resume → audio starts at ~30s, not 0:00 _(2nd fix: resume was restarting at 0 because seekTo was dropped on the unprepared item; now passes the start position into setMediaItem — re-test)_
 - [ ] **Force-quit via Settings → Apps → Force stop** → re-open → mini-player restored, resumes at saved position
 - [ ] Listen for ~5 minutes, swipe app away from recents *while playing* — playback continues in the background — _⚠️ on this ColorOS/OPPO device the OS kills the swiped app's service even though it's a proper foreground service. Background playback can't be guaranteed without exempting MigsPod from battery optimization (Settings → Battery → MigsPod → Allow background activity / don't optimize). After a kill, relaunch now restores the session so nothing is lost._
 - [ ] After ~10s in background, pull notification → media card present with working controls _(confirmed at framework level: foreground notification `channel=default_channel_id, category=transport`; ColorOS shows it in the shade's media area, not as a banner)_
@@ -88,7 +89,7 @@ _Original pass: BROKEN — after quitting, the mini-player was gone on relaunch 
 - [ ] Let it finish naturally
 - [x] **No autoplay** — playback stops, no next episode starts
 - [x] **Player closes when the episode finishes** — mini-player disappears at end-of-episode _(fixed: was staying open on a finished item)_
-- [x] Episode is marked **✓ Played** and dimmed in the podcast list and New feed _(fixed: the old grey-on-grey was too subtle; now a "✓ Played" chip + 50% dimmed title)_
+- [x] Episode is marked **✓ Played** and dimmed in the podcast list, New feed, **and Downloads** _(fixed: now consistent across all three lists with a "✓ Played" chip + 50% dimmed title)_
 - [ ] Episode is **NOT** deleted (per design)
 - [x] Completed episode does NOT appear in "in progress" sections
 
@@ -97,27 +98,27 @@ _Original pass: BROKEN — after quitting, the mini-player was gone on relaunch 
 - [x] From a podcast episode row, tap **Download** (kebab) → row shows a "Downloading…" chip, then "Downloaded" when done _(fixed: there was no in-progress indicator in this list)_
 - [ ] From Episode Detail, tap **Download** → progress feedback (or button switches to "Delete download" when done)
 - [ ] Downloaded episode shows in **Downloads** tab
-- [ ] Toggle **grouped / by date** sort — both work
-- [ ] **Airplane mode → play downloaded episode** → audio plays from disk (no network needed)
-- [ ] **Delete download** → file removed, episode disappears from Downloads tab
+- [x] **Default sort is now By date**, not grouped by podcast _(changed per feedback; toggle to "By podcast" still available)_
+- [x] **Airplane mode → play downloaded episode** → audio plays from disk (no network needed)
+- [ ] **Delete download** → file removed, episode disappears from Downloads tab — _note: the file IS deleted (unlinked). Previously, deleting while that episode was playing left audio going from the still-open file handle, which looked like "not deleted". Now deleting the currently-playing episode stops playback so it's unambiguous._
 - [ ] Verify file actually deleted: `adb shell run-as com.migspod ls files/downloads/` (should not list the deleted file)
 - [ ] Download → unsubscribe from podcast → download is removed (cascade) and Downloads tab updates
 
-## 9. New Episodes feed
+## 9. New Episodes feed — ✅ user confirmed looks good
 
-- [ ] "New" tab aggregates across all subscriptions, newest first
-- [ ] Episodes from different podcasts interleave by date
-- [ ] Tap → opens EpisodeDetail bottom sheet (not full route)
-- [ ] Pull-to-refresh triggers `refreshAllPodcasts` — wait, verify both subs updated
+- [x] "New" tab aggregates across all subscriptions, newest first
+- [x] Episodes from different podcasts interleave by date
+- [x] Tap → opens EpisodeDetail bottom sheet (not full route)
+- [x] Pull-to-refresh triggers `refreshAllPodcasts`
 
-## 10. Mini-player behavior
+## 10. Mini-player behavior — ✅ user confirmed looks good
 
-- [ ] Mini-player only appears when an episode is loaded
-- [ ] After tapping Stop (or never starting playback) → mini-player hidden
-- [ ] Mini-player shows correct title, podcast, artwork
-- [ ] Progress bar at the top updates every ~500ms
-- [ ] Tap play/pause from mini-player → toggles
-- [ ] Tap body of mini-player → opens Now Playing
+- [x] Mini-player only appears when an episode is loaded
+- [x] After tapping Stop (or never starting playback) → mini-player hidden
+- [x] Mini-player shows correct title, podcast, artwork
+- [x] Progress bar at the top updates every ~500ms
+- [x] Tap play/pause from mini-player → toggles
+- [x] Tap body of mini-player → opens Now Playing
 
 ## 11. Navigation edge cases
 

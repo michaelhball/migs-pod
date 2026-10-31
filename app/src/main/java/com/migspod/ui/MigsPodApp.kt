@@ -33,7 +33,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.migspod.MigsPodApp as App
-import com.migspod.data.PodcastRepository
 import com.migspod.player.PlayerController
 import com.migspod.player.PlaybackState
 import com.migspod.ui.screens.DownloadsScreen
@@ -73,10 +72,7 @@ private val bottomBarRoutes = listOf(
 fun MigsPodApp() {
     val context = LocalContext.current
     val navController = rememberNavController()
-    val db = remember { App.instance.database }
-    val repository = remember {
-        PodcastRepository(db.podcastDao(), db.episodeDao())
-    }
+    val repository = App.instance.repository
     val currentEpisodeId by PlaybackState.currentEpisodeId.collectAsStateWithLifecycle()
     var sheetTarget by remember { mutableStateOf<EpisodeSheetTarget?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)

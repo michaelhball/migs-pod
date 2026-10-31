@@ -11,9 +11,7 @@ class FeedRefreshWorker(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val db = MigsPodApp.instance.database
-        val repository = PodcastRepository(db.podcastDao(), db.episodeDao())
-        val result = repository.refreshAllPodcasts()
+        val result = MigsPodApp.instance.repository.refreshAllPodcasts()
         return if (result.isSuccess) Result.success() else Result.retry()
     }
 }

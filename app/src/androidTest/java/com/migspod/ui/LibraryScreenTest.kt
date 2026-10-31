@@ -16,6 +16,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.io.File
 
 class LibraryScreenTest {
 
@@ -31,7 +32,7 @@ class LibraryScreenTest {
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repository = PodcastRepository(db.podcastDao(), db.episodeDao())
+        repository = PodcastRepository(db.podcastDao(), db.episodeDao(), File(context.cacheDir, "test-downloads"))
     }
 
     @After
@@ -51,10 +52,10 @@ class LibraryScreenTest {
 
     @Test
     fun subscribedPodcastsAppearInGrid() = runTest {
-        db.podcastDao().insertPodcast(
+        db.podcastDao().upsertPodcast(
             Podcast(feedUrl = "feed-1", title = "My Cool Podcast", author = "Host")
         )
-        db.podcastDao().insertPodcast(
+        db.podcastDao().upsertPodcast(
             Podcast(feedUrl = "feed-2", title = "Another Show", author = "Host 2")
         )
 

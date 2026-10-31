@@ -15,6 +15,9 @@ data class Podcast(
     val description: String = "",
     val artworkUrl: String = "",
     val lastRefreshed: Long = 0L,
+    // HTTP validators from the last full fetch, so unchanged feeds come back as a 304.
+    val feedEtag: String? = null,
+    val feedLastModified: String? = null,
 )
 
 @Immutable

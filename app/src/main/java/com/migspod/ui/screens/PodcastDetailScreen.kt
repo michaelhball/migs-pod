@@ -39,7 +39,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -50,6 +49,8 @@ import com.migspod.ui.components.LinkifiedText
 import com.migspod.data.Podcast
 import com.migspod.data.PodcastRepository
 import com.migspod.player.PlayerController
+import com.migspod.ui.deleteDownload
+import com.migspod.ui.startDownload
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -69,21 +70,11 @@ fun PodcastDetailScreen(
     var podcast by remember { mutableStateOf<Podcast?>(null) }
     var isRefreshing by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
-    var downloadingIds by remember { mutableStateOf(emptySet<String>()) }
+    val downloadingIds by repository.downloadingIds.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
 
     LaunchedEffect(feedUrl) {
         podcast = withContext(Dispatchers.IO) { repository.getPodcast(feedUrl) }
-    }
-
-    // Clear the "Downloading…" hint once a download lands (downloadPath set).
-    LaunchedEffect(episodes) {
-        if (downloadingIds.isNotEmpty()) {
-            downloadingIds = downloadingIds.filter { id ->
-                episodes.find { it.id == id }?.downloadPath == null
-            }.toSet()
-        }
     }
 
     fun doRefresh() {
@@ -140,13 +131,7 @@ fun PodcastDetailScreen(
                         repository = repository,
                         isDownloading = episode.id in downloadingIds,
                         onClick = { onEpisodeClick(episode.id) },
-                        onDownload = {
-                            downloadingIds = downloadingIds + episode.id
-                            val appCtx = context.applicationContext
-                            App.instance.appScope.launch {
-                                repository.downloadEpisode(appCtx, episode.id)
-                            }
-                        },
+                        onDownload = { startDownload(repository, episode.id) },
                     )
                 }
             }
@@ -308,7 +293,7 @@ private fun EpisodeRow(
                         text = { Text("Delete download") },
                         onClick = {
                             menuOpen = false
-                            App.instance.appScope.launch { repository.deleteDownload(episode.id) }
+                            deleteDownload(repository, episode.id)
                         },
                     )
                 }

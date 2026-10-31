@@ -19,6 +19,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.io.File
 
 class PodcastDetailScreenTest {
 
@@ -34,7 +35,7 @@ class PodcastDetailScreenTest {
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repository = PodcastRepository(db.podcastDao(), db.episodeDao())
+        repository = PodcastRepository(db.podcastDao(), db.episodeDao(), File(context.cacheDir, "test-downloads"))
     }
 
     @After
@@ -44,7 +45,7 @@ class PodcastDetailScreenTest {
 
     @Test
     fun showsPodcastTitleAndEpisodes() = runTest {
-        db.podcastDao().insertPodcast(
+        db.podcastDao().upsertPodcast(
             Podcast(
                 feedUrl = "feed-1",
                 title = "Science Hour",
@@ -91,7 +92,7 @@ class PodcastDetailScreenTest {
 
     @Test
     fun showsBackButton() = runTest {
-        db.podcastDao().insertPodcast(
+        db.podcastDao().upsertPodcast(
             Podcast(feedUrl = "feed-1", title = "Test Podcast")
         )
 
@@ -111,7 +112,7 @@ class PodcastDetailScreenTest {
 
     @Test
     fun showsProgressBarForPartiallyPlayedEpisode() = runTest {
-        db.podcastDao().insertPodcast(
+        db.podcastDao().upsertPodcast(
             Podcast(feedUrl = "feed-1", title = "Test")
         )
         db.episodeDao().insertEpisodes(listOf(

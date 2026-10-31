@@ -116,6 +116,9 @@ dependencies {
         // play-services-basement (via Firebase) pulls fragment 1.1.0, which breaks
         // registerForActivityResult and fails lint.
         implementation(libs.androidx.fragment)
+        // room-testing's MigrationTestHelper needs 1.8+; test classpaths are pinned to
+        // the app's runtime versions, where lifecycle alone would resolve 1.7.3.
+        implementation(libs.kotlinx.serialization.core)
     }
 
     debugImplementation(libs.androidx.ui.tooling)

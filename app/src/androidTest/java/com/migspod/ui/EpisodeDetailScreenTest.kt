@@ -18,6 +18,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.io.File
 
 class EpisodeDetailScreenTest {
 
@@ -33,7 +34,7 @@ class EpisodeDetailScreenTest {
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repository = PodcastRepository(db.podcastDao(), db.episodeDao())
+        repository = PodcastRepository(db.podcastDao(), db.episodeDao(), File(context.cacheDir, "test-downloads"))
     }
 
     @After
@@ -43,7 +44,7 @@ class EpisodeDetailScreenTest {
 
     @Test
     fun showsEpisodeTitleAndDescription() = runTest {
-        db.podcastDao().insertPodcast(
+        db.podcastDao().upsertPodcast(
             Podcast(feedUrl = "feed-1", title = "Science Show", author = "Dr. Smith")
         )
         db.episodeDao().insertEpisodes(listOf(
@@ -77,7 +78,7 @@ class EpisodeDetailScreenTest {
 
     @Test
     fun showsPlayButton() = runTest {
-        db.podcastDao().insertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
+        db.podcastDao().upsertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
         db.episodeDao().insertEpisodes(listOf(
             Episode(id = "ep-1", podcastFeedUrl = "feed-1", title = "Ep 1")
         ))
@@ -100,7 +101,7 @@ class EpisodeDetailScreenTest {
 
     @Test
     fun showsDownloadButtonForNotDownloaded() = runTest {
-        db.podcastDao().insertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
+        db.podcastDao().upsertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
         db.episodeDao().insertEpisodes(listOf(
             Episode(id = "ep-1", podcastFeedUrl = "feed-1", title = "Ep 1", audioUrl = "https://example.com/ep.mp3")
         ))
@@ -123,7 +124,7 @@ class EpisodeDetailScreenTest {
 
     @Test
     fun showsDeleteDownloadForDownloaded() = runTest {
-        db.podcastDao().insertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
+        db.podcastDao().upsertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
         db.episodeDao().insertEpisodes(listOf(
             Episode(id = "ep-1", podcastFeedUrl = "feed-1", title = "Ep 1", downloadPath = "/fake.mp3")
         ))

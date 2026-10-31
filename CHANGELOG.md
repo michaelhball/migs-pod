@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CHANGELOG.md, README.md, TODO.md
 
 ### Changed
+- Feed refresh sends ETag / Last-Modified, so unchanged feeds come back as a tiny 304 instead of re-downloading the whole feed every hour (DB v4)
 - Updated Compose BOM 2024.12.01 → 2026.02.01
 - Updated Room 2.6.1 → 2.8.4
 - Updated Media3 1.5.1 → 1.9.2
@@ -29,6 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated Coroutines 1.9.0 → 1.10.2
 
 ### Fixed
+- Downloads: an HTTP error or a Wi-Fi login page is no longer saved as the episode and marked "Downloaded"; failures show a message instead of a spinner that never stops; partial files are cleaned up; the same episode can't be downloaded twice at once; "Downloading…" now shows on every screen
+- Unsubscribing deletes that podcast's downloaded files (they were left on disk forever); leftover files from earlier unsubscribes and interrupted downloads are cleaned up on launch
+- Deleting a download from the episode sheet or ⋮ menu now stops playback if it's the playing episode (previously only the Downloads tab did)
+- Subscribing to a URL that isn't a feed (404, web page) no longer adds a blank, untitled podcast
+- Re-subscribing to a podcast could wipe its episodes' progress, played state and downloads (`REPLACE` + cascade)
+- Feed refresh now updates existing episodes' title, description, audio URL, date and duration (keeping progress/played/downloads), so a feed that moves its audio no longer leaves dead links
 - Episode sheet showed time listened as "remaining"
 - Episode dates in many common formats (no weekday, wrong weekday, no seconds, named or `+01:00` time zones, ISO 8601 with `Z`) were dropped, so those episodes showed no date, sank to the bottom of lists and fell out of the New tab
 - Show notes: HTML entities (`&amp;`, `&rsquo;`, `&nbsp;`…) are decoded, paragraphs/line breaks/list items are kept instead of running together, and link targets are kept so they can be tapped

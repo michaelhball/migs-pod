@@ -17,6 +17,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.io.File
 
 class SearchScreenTest {
 
@@ -32,7 +33,7 @@ class SearchScreenTest {
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repository = PodcastRepository(db.podcastDao(), db.episodeDao())
+        repository = PodcastRepository(db.podcastDao(), db.episodeDao(), File(context.cacheDir, "test-downloads"))
     }
 
     @After

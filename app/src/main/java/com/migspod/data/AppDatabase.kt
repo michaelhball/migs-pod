@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [Podcast::class, Episode::class],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -30,6 +30,15 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Validators start out null, so the first refresh after upgrading is a full
+        // fetch — existing episodes pick up any parser fixes on the way.
+        internal val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `podcasts` ADD COLUMN `feedEtag` TEXT")
+                db.execSQL("ALTER TABLE `podcasts` ADD COLUMN `feedLastModified` TEXT")
+            }
+        }
+
         fun create(context: Context): AppDatabase {
             return Room.databaseBuilder(
                 context.applicationContext,
@@ -37,7 +46,7 @@ abstract class AppDatabase : RoomDatabase() {
                 "migspod.db"
             )
                 .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build()
         }
     }

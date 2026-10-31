@@ -3,6 +3,9 @@ package com.migspod
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.os.Handler
+import android.os.Looper
+import android.widget.Toast
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
@@ -14,9 +17,12 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import com.migspod.data.AppDatabase
 import com.migspod.data.FeedRefreshWorker
+import com.migspod.data.PodcastRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import java.io.File
 import java.util.concurrent.TimeUnit
 
 class MigsPodApp : Application(), ImageLoaderFactory {
@@ -24,8 +30,15 @@ class MigsPodApp : Application(), ImageLoaderFactory {
     lateinit var database: AppDatabase
         private set
 
+    // One instance so in-flight download state is shared by every screen.
+    val repository: PodcastRepository by lazy {
+        PodcastRepository(database.podcastDao(), database.episodeDao(), File(filesDir, "downloads"))
+    }
+
     // Long-running work (downloads, refreshes) tied to app lifetime, not the UI composition.
     val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     override fun onCreate() {
         super.onCreate()
@@ -33,6 +46,11 @@ class MigsPodApp : Application(), ImageLoaderFactory {
         database = AppDatabase.create(this)
         createNotificationChannel()
         scheduleFeedRefresh()
+        appScope.launch { repository.reconcileDownloads() }
+    }
+
+    fun showToast(message: String) {
+        mainHandler.post { Toast.makeText(this, message, Toast.LENGTH_SHORT).show() }
     }
 
     override fun newImageLoader(): ImageLoader {

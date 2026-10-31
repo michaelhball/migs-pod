@@ -41,12 +41,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import com.migspod.MigsPodApp as App
 import com.migspod.data.Episode
 import com.migspod.data.Podcast
 import com.migspod.data.PodcastRepository
-import com.migspod.player.PlayerController
-import kotlinx.coroutines.launch
+import com.migspod.ui.deleteDownload
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -175,12 +173,7 @@ fun DownloadsScreen(
                             podcastArtworkUrl = "",
                             indented = true,
                             onClick = { onEpisodeClick(episode.id) },
-                            onDeleteDownload = {
-                                // If we're deleting what's currently playing, stop —
-                                // the file is about to be removed out from under it.
-                                PlayerController.stopIfCurrent(episode.id)
-                                App.instance.appScope.launch { repository.deleteDownload(episode.id) }
-                            },
+                            onDeleteDownload = { deleteDownload(repository, episode.id) },
                         )
                     }
                 }
@@ -197,10 +190,7 @@ fun DownloadsScreen(
                         podcastArtworkUrl = podcast?.artworkUrl ?: "",
                         indented = false,
                         onClick = { onEpisodeClick(episode.id) },
-                        onDeleteDownload = {
-                            PlayerController.stopIfCurrent(episode.id)
-                            App.instance.appScope.launch { repository.deleteDownload(episode.id) }
-                        },
+                        onDeleteDownload = { deleteDownload(repository, episode.id) },
                     )
                 }
             }

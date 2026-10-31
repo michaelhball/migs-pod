@@ -20,6 +20,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.io.File
 
 class DownloadsScreenTest {
 
@@ -35,7 +36,7 @@ class DownloadsScreenTest {
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repository = PodcastRepository(db.podcastDao(), db.episodeDao())
+        repository = PodcastRepository(db.podcastDao(), db.episodeDao(), File(context.cacheDir, "test-downloads"))
     }
 
     @After
@@ -55,8 +56,8 @@ class DownloadsScreenTest {
 
     @Test
     fun showsDownloadedEpisodesGroupedByPodcast() = runTest {
-        db.podcastDao().insertPodcast(Podcast(feedUrl = "feed-a", title = "Alpha Podcast"))
-        db.podcastDao().insertPodcast(Podcast(feedUrl = "feed-b", title = "Beta Podcast"))
+        db.podcastDao().upsertPodcast(Podcast(feedUrl = "feed-a", title = "Alpha Podcast"))
+        db.podcastDao().upsertPodcast(Podcast(feedUrl = "feed-b", title = "Beta Podcast"))
         db.episodeDao().insertEpisodes(listOf(
             Episode(
                 id = "a-1", podcastFeedUrl = "feed-a", title = "Alpha Ep Old",
@@ -91,7 +92,7 @@ class DownloadsScreenTest {
 
     @Test
     fun nonDownloadedEpisodesDoNotAppear() = runTest {
-        db.podcastDao().insertPodcast(Podcast(feedUrl = "feed-1", title = "Test Pod"))
+        db.podcastDao().upsertPodcast(Podcast(feedUrl = "feed-1", title = "Test Pod"))
         db.episodeDao().insertEpisodes(listOf(
             Episode(id = "ep-1", podcastFeedUrl = "feed-1", title = "Downloaded Ep", downloadPath = "/fake.mp3"),
             Episode(id = "ep-2", podcastFeedUrl = "feed-1", title = "Not Downloaded Ep"),
@@ -110,8 +111,8 @@ class DownloadsScreenTest {
 
     @Test
     fun sortToggleSwitchesBetweenGroupedAndDateView() = runTest {
-        db.podcastDao().insertPodcast(Podcast(feedUrl = "feed-a", title = "Alpha Podcast"))
-        db.podcastDao().insertPodcast(Podcast(feedUrl = "feed-b", title = "Beta Podcast"))
+        db.podcastDao().upsertPodcast(Podcast(feedUrl = "feed-a", title = "Alpha Podcast"))
+        db.podcastDao().upsertPodcast(Podcast(feedUrl = "feed-b", title = "Beta Podcast"))
         db.episodeDao().insertEpisodes(listOf(
             Episode(id = "a-1", podcastFeedUrl = "feed-a", title = "Alpha Ep",
                 publishedDate = 1000, downloadPath = "/fake/a1.mp3"),
@@ -146,7 +147,7 @@ class DownloadsScreenTest {
 
     @Test
     fun deleteButtonIsVisible() = runTest {
-        db.podcastDao().insertPodcast(Podcast(feedUrl = "feed-1", title = "Test Pod"))
+        db.podcastDao().upsertPodcast(Podcast(feedUrl = "feed-1", title = "Test Pod"))
         db.episodeDao().insertEpisodes(listOf(
             Episode(id = "ep-1", podcastFeedUrl = "feed-1", title = "Ep One", downloadPath = "/fake.mp3"),
         ))

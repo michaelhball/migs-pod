@@ -4,18 +4,23 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.File
+import java.util.concurrent.TimeUnit
 
 @RunWith(AndroidJUnit4::class)
 class PodcastRepositoryTest {
@@ -23,6 +28,7 @@ class PodcastRepositoryTest {
     private lateinit var db: AppDatabase
     private lateinit var repository: PodcastRepository
     private lateinit var server: MockWebServer
+    private lateinit var downloadsDir: File
 
     @Before
     fun setup() {
@@ -30,7 +36,8 @@ class PodcastRepositoryTest {
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repository = PodcastRepository(db.podcastDao(), db.episodeDao())
+        downloadsDir = File(context.cacheDir, "test-downloads").apply { deleteRecursively() }
+        repository = PodcastRepository(db.podcastDao(), db.episodeDao(), downloadsDir)
         server = MockWebServer()
         server.start()
     }
@@ -39,6 +46,7 @@ class PodcastRepositoryTest {
     fun teardown() {
         server.shutdown()
         db.close()
+        downloadsDir.deleteRecursively()
     }
 
     private fun feedXml(title: String, episodes: List<Triple<String, String, String>>): String {
@@ -88,8 +96,84 @@ class PodcastRepositoryTest {
         val feedUrl = server.url("/feed.xml").toString()
 
         val result = repository.subscribeToPodcast(feedUrl)
-        // OkHttp itself doesn't throw on 5xx — parser will fail on the body
-        assertTrue(result.isFailure || result.getOrNull()?.title?.isEmpty() == true)
+
+        assertTrue(result.isFailure)
+        assertNull(db.podcastDao().getPodcast(feedUrl))
+    }
+
+    @Test
+    fun subscribeRejectsAWebPage() = runTest {
+        server.enqueue(MockResponse().setBody("<html><head><title>Hi</title></head><body>Not a feed</body></html>"))
+        val feedUrl = server.url("/page").toString()
+
+        val result = repository.subscribeToPodcast(feedUrl)
+
+        assertTrue(result.isFailure)
+        assertNull(db.podcastDao().getPodcast(feedUrl))
+    }
+
+    @Test
+    fun subscribingAgainKeepsListeningState() = runTest {
+        val feed = feedXml("Twice", listOf(Triple("ep-1", "Episode", "https://example.com/1.mp3")))
+        server.enqueue(MockResponse().setBody(feed))
+        val feedUrl = server.url("/feed.xml").toString()
+        repository.subscribeToPodcast(feedUrl).getOrThrow()
+        db.episodeDao().updatePlaybackPosition("ep-1", 42_000)
+        db.episodeDao().markCompleted("ep-1", true)
+        db.episodeDao().updateDownloadPath("ep-1", "/some/path.mp3")
+
+        server.enqueue(MockResponse().setBody(feed))
+        repository.subscribeToPodcast(feedUrl).getOrThrow()
+
+        val ep = db.episodeDao().getEpisode("ep-1")!!
+        assertEquals(42_000L, ep.playbackPositionMs)
+        assertTrue(ep.isCompleted)
+        assertEquals("/some/path.mp3", ep.downloadPath)
+    }
+
+    @Test
+    fun refreshUpdatesFeedFieldsButKeepsListeningState() = runTest {
+        server.enqueue(MockResponse().setBody(feedXml("Show", listOf(
+            Triple("ep-1", "Typo Titel", "https://example.com/old-host.mp3"),
+        ))))
+        val feedUrl = server.url("/feed.xml").toString()
+        repository.subscribeToPodcast(feedUrl).getOrThrow()
+        db.episodeDao().updatePlaybackPosition("ep-1", 7_000)
+
+        server.enqueue(MockResponse().setBody(feedXml("Show", listOf(
+            Triple("ep-1", "Fixed Title", "https://example.com/new-host.mp3"),
+        ))))
+        repository.refreshPodcast(feedUrl).getOrThrow()
+
+        val ep = db.episodeDao().getEpisode("ep-1")!!
+        assertEquals("Fixed Title", ep.title)
+        assertEquals("https://example.com/new-host.mp3", ep.audioUrl)
+        assertEquals(7_000L, ep.playbackPositionMs)
+    }
+
+    @Test
+    fun refreshSendsValidatorsAndSkipsUnchangedFeeds() = runTest {
+        server.enqueue(
+            MockResponse()
+                .setHeader("ETag", "\"v1\"")
+                .setHeader("Last-Modified", "Fri, 05 Jan 2024 10:00:00 GMT")
+                .setBody(feedXml("Cached", listOf(Triple("ep-1", "Episode", "https://example.com/1.mp3"))))
+        )
+        val feedUrl = server.url("/feed.xml").toString()
+        repository.subscribeToPodcast(feedUrl).getOrThrow()
+        server.takeRequest()
+        val before = db.podcastDao().getPodcast(feedUrl)!!
+
+        server.enqueue(MockResponse().setResponseCode(304))
+        repository.refreshPodcast(feedUrl).getOrThrow()
+
+        val request = server.takeRequest()
+        assertEquals("\"v1\"", request.getHeader("If-None-Match"))
+        assertEquals("Fri, 05 Jan 2024 10:00:00 GMT", request.getHeader("If-Modified-Since"))
+        val after = db.podcastDao().getPodcast(feedUrl)!!
+        assertTrue(after.lastRefreshed >= before.lastRefreshed)
+        assertEquals("Cached", after.title)
+        assertEquals(1, db.episodeDao().getEpisodesForPodcast(feedUrl).first().size)
     }
 
     @Test
@@ -173,5 +257,105 @@ class PodcastRepositoryTest {
     fun refreshAllPodcastsHandlesEmpty() = runTest {
         val result = repository.refreshAllPodcasts()
         assertTrue(result.isSuccess)
+    }
+
+    // --- Downloads ---
+
+    private suspend fun subscribeWithEpisode(audioPath: String): Podcast {
+        val audioUrl = server.url(audioPath).toString()
+        server.enqueue(MockResponse().setBody(feedXml("Downloads", listOf(Triple("ep-d", "Ep D", audioUrl)))))
+        return repository.subscribeToPodcast(server.url("/feed.xml").toString()).getOrThrow()
+    }
+
+    private fun audioResponse(body: String = "ID3-audio-bytes") =
+        MockResponse().setHeader("Content-Type", "audio/mpeg").setBody(body)
+
+    @Test
+    fun downloadSavesAudioAndRecordsPath() = runTest {
+        subscribeWithEpisode("/ep.mp3")
+        server.enqueue(audioResponse())
+
+        assertTrue(repository.downloadEpisode("ep-d").isSuccess)
+
+        val path = db.episodeDao().getEpisode("ep-d")!!.downloadPath
+        assertNotNull(path)
+        assertEquals("ID3-audio-bytes", File(path!!).readText())
+        assertEquals(listOf(File(path).name), downloadsDir.list()!!.toList()) // no .part left
+        assertTrue(repository.downloadingIds.value.isEmpty())
+    }
+
+    @Test
+    fun downloadFailsOnHttpErrorAndLeavesNothingBehind() = runTest {
+        subscribeWithEpisode("/missing.mp3")
+        server.enqueue(MockResponse().setResponseCode(404).setBody("Not found"))
+
+        assertTrue(repository.downloadEpisode("ep-d").isFailure)
+
+        assertNull(db.episodeDao().getEpisode("ep-d")!!.downloadPath)
+        assertTrue(downloadsDir.list().isNullOrEmpty())
+        assertTrue(repository.downloadingIds.value.isEmpty())
+    }
+
+    @Test
+    fun downloadRejectsAWebPage() = runTest {
+        subscribeWithEpisode("/portal")
+        server.enqueue(
+            MockResponse().setHeader("Content-Type", "text/html").setBody("<html>Sign in to Wi-Fi</html>")
+        )
+
+        assertTrue(repository.downloadEpisode("ep-d").isFailure)
+        assertNull(db.episodeDao().getEpisode("ep-d")!!.downloadPath)
+    }
+
+    @Test
+    fun concurrentDownloadsOfOneEpisodeOnlyFetchOnce() = runTest {
+        subscribeWithEpisode("/slow.mp3")
+        server.enqueue(audioResponse().setBodyDelay(500, TimeUnit.MILLISECONDS))
+        val requestsBefore = server.requestCount
+
+        val results = listOf(
+            async { repository.downloadEpisode("ep-d") },
+            async { repository.downloadEpisode("ep-d") },
+        ).awaitAll()
+
+        assertTrue(results.all { it.isSuccess })
+        assertEquals(1, server.requestCount - requestsBefore)
+        assertNotNull(db.episodeDao().getEpisode("ep-d")!!.downloadPath)
+    }
+
+    @Test
+    fun unsubscribeDeletesDownloadedFiles() = runTest {
+        val podcast = subscribeWithEpisode("/ep.mp3")
+        server.enqueue(audioResponse())
+        repository.downloadEpisode("ep-d").getOrThrow()
+        val file = File(db.episodeDao().getEpisode("ep-d")!!.downloadPath!!)
+        assertTrue(file.exists())
+
+        repository.unsubscribe(podcast)
+
+        assertFalse(file.exists())
+    }
+
+    @Test
+    fun reconcileForgetsMissingFilesAndDeletesOrphans() = runTest {
+        subscribeWithEpisode("/ep.mp3")
+        server.enqueue(audioResponse())
+        repository.downloadEpisode("ep-d").getOrThrow()
+        val kept = File(db.episodeDao().getEpisode("ep-d")!!.downloadPath!!)
+
+        db.episodeDao().insertEpisodes(listOf(
+            Episode(id = "ep-gone", podcastFeedUrl = server.url("/feed.xml").toString(), title = "Gone",
+                downloadPath = File(downloadsDir, "gone.mp3").absolutePath),
+        ))
+        val orphan = File(downloadsDir, "orphan.mp3").apply { writeText("x") }
+        val partial = File(downloadsDir, "interrupted.mp3.part").apply { writeText("x") }
+
+        repository.reconcileDownloads()
+
+        assertTrue(kept.exists())
+        assertNotNull(db.episodeDao().getEpisode("ep-d")!!.downloadPath)
+        assertNull(db.episodeDao().getEpisode("ep-gone")!!.downloadPath)
+        assertFalse(orphan.exists())
+        assertFalse(partial.exists())
     }
 }

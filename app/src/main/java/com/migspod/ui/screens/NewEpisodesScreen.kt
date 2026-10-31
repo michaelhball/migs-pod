@@ -38,16 +38,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import com.migspod.MigsPodApp as App
 import com.migspod.data.Episode
 import com.migspod.data.Podcast
 import com.migspod.data.PodcastRepository
+import com.migspod.ui.startDownload
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -61,9 +60,8 @@ fun NewEpisodesScreen(
 ) {
     val episodes by repository.getRecentEpisodes().collectAsStateWithLifecycle(emptyList())
     var isRefreshing by remember { mutableStateOf(false) }
-    var downloadingIds by remember { mutableStateOf(emptySet<String>()) }
+    val downloadingIds by repository.downloadingIds.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
 
     // Cache podcast metadata for display — single batch query
     var podcastCache by remember { mutableStateOf<Map<String, Podcast>>(emptyMap()) }
@@ -120,14 +118,7 @@ fun NewEpisodesScreen(
                             podcastArtworkUrl = podcast?.artworkUrl ?: "",
                             isDownloading = episode.id in downloadingIds,
                             onClick = { onEpisodeClick(episode.id) },
-                            onDownload = {
-                                downloadingIds = downloadingIds + episode.id
-                                val appCtx = context.applicationContext
-                                val epId = episode.id
-                                App.instance.appScope.launch {
-                                    repository.downloadEpisode(appCtx, epId)
-                                }
-                            },
+                            onDownload = { startDownload(repository, episode.id) },
                         )
                     }
                 }

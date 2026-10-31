@@ -38,15 +38,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import com.migspod.MigsPodApp as App
 import com.migspod.data.Podcast
 import com.migspod.data.PodcastRepository
 import com.migspod.player.PlayerController
 import com.migspod.ui.components.LinkifiedText
+import com.migspod.ui.deleteDownload
+import com.migspod.ui.startDownload
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -88,9 +88,9 @@ fun EpisodeDetailContent(
     val episodeFlow = remember(episodeId) { repository.getEpisodeFlow(episodeId) }
     val episode by episodeFlow.collectAsStateWithLifecycle(null)
     var podcast by remember { mutableStateOf<Podcast?>(null) }
-    var isDownloading by remember { mutableStateOf(false) }
+    val downloadingIds by repository.downloadingIds.collectAsStateWithLifecycle()
+    val isDownloading = episodeId in downloadingIds
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
     val dateFormat = remember { SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()) }
 
     LaunchedEffect(episode?.podcastFeedUrl) {
@@ -189,9 +189,7 @@ fun EpisodeDetailContent(
             if (ep.downloadPath != null) {
                 if (showDeleteAction) {
                     OutlinedButton(
-                        onClick = {
-                            App.instance.appScope.launch { repository.deleteDownload(ep.id) }
-                        },
+                        onClick = { deleteDownload(repository, ep.id) },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -211,13 +209,7 @@ fun EpisodeDetailContent(
                 }
             } else if (ep.audioUrl.isNotEmpty()) {
                 OutlinedButton(
-                    onClick = {
-                        isDownloading = true
-                        val appCtx = context.applicationContext
-                        App.instance.appScope.launch {
-                            repository.downloadEpisode(appCtx, ep.id)
-                        }
-                    },
+                    onClick = { startDownload(repository, ep.id) },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))

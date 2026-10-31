@@ -18,6 +18,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.io.File
 
 class NewEpisodesScreenTest {
 
@@ -33,7 +34,7 @@ class NewEpisodesScreenTest {
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repository = PodcastRepository(db.podcastDao(), db.episodeDao())
+        repository = PodcastRepository(db.podcastDao(), db.episodeDao(), File(context.cacheDir, "test-downloads"))
     }
 
     @After
@@ -53,8 +54,8 @@ class NewEpisodesScreenTest {
 
     @Test
     fun showsEpisodesFromMultiplePodcasts() = runTest {
-        db.podcastDao().insertPodcast(Podcast(feedUrl = "feed-1", title = "Podcast Alpha"))
-        db.podcastDao().insertPodcast(Podcast(feedUrl = "feed-2", title = "Podcast Beta"))
+        db.podcastDao().upsertPodcast(Podcast(feedUrl = "feed-1", title = "Podcast Alpha"))
+        db.podcastDao().upsertPodcast(Podcast(feedUrl = "feed-2", title = "Podcast Beta"))
         db.episodeDao().insertEpisodes(listOf(
             Episode(
                 id = "a-1",
@@ -83,7 +84,7 @@ class NewEpisodesScreenTest {
 
     @Test
     fun showsPodcastNamePerEpisode() = runTest {
-        db.podcastDao().insertPodcast(Podcast(feedUrl = "feed-1", title = "My Favorite Show"))
+        db.podcastDao().upsertPodcast(Podcast(feedUrl = "feed-1", title = "My Favorite Show"))
         db.episodeDao().insertEpisodes(listOf(
             Episode(
                 id = "ep-1",

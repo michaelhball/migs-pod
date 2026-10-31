@@ -46,7 +46,7 @@ class DatabaseTest {
             title = "Test Podcast",
             author = "Author",
         )
-        podcastDao.insertPodcast(podcast)
+        podcastDao.upsertPodcast(podcast)
         val result = podcastDao.getPodcast("https://example.com/feed.xml")
         assertNotNull(result)
         assertEquals("Test Podcast", result!!.title)
@@ -54,9 +54,9 @@ class DatabaseTest {
 
     @Test
     fun getAllPodcastsSortedByTitle() = runTest {
-        podcastDao.insertPodcast(Podcast(feedUrl = "url-b", title = "Bravo"))
-        podcastDao.insertPodcast(Podcast(feedUrl = "url-a", title = "Alpha"))
-        podcastDao.insertPodcast(Podcast(feedUrl = "url-c", title = "Charlie"))
+        podcastDao.upsertPodcast(Podcast(feedUrl = "url-b", title = "Bravo"))
+        podcastDao.upsertPodcast(Podcast(feedUrl = "url-a", title = "Alpha"))
+        podcastDao.upsertPodcast(Podcast(feedUrl = "url-c", title = "Charlie"))
         val all = podcastDao.getAllPodcasts().first()
         assertEquals(listOf("Alpha", "Bravo", "Charlie"), all.map { it.title })
     }
@@ -64,7 +64,7 @@ class DatabaseTest {
     @Test
     fun deletePodcast() = runTest {
         val podcast = Podcast(feedUrl = "https://example.com/feed.xml", title = "Test")
-        podcastDao.insertPodcast(podcast)
+        podcastDao.upsertPodcast(podcast)
         podcastDao.deletePodcast(podcast)
         assertNull(podcastDao.getPodcast("https://example.com/feed.xml"))
     }
@@ -72,7 +72,7 @@ class DatabaseTest {
     @Test
     fun deletePodcastCascadesEpisodes() = runTest {
         val podcast = Podcast(feedUrl = "feed-1", title = "Test")
-        podcastDao.insertPodcast(podcast)
+        podcastDao.upsertPodcast(podcast)
         episodeDao.insertEpisodes(listOf(
             Episode(id = "ep-1", podcastFeedUrl = "feed-1", title = "Ep 1"),
             Episode(id = "ep-2", podcastFeedUrl = "feed-1", title = "Ep 2"),
@@ -86,7 +86,7 @@ class DatabaseTest {
 
     @Test
     fun insertEpisodesIgnoresDuplicates() = runTest {
-        podcastDao.insertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
+        podcastDao.upsertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
         episodeDao.insertEpisodes(listOf(
             Episode(id = "ep-1", podcastFeedUrl = "feed-1", title = "Original Title"),
         ))
@@ -100,7 +100,7 @@ class DatabaseTest {
 
     @Test
     fun updatePlaybackPosition() = runTest {
-        podcastDao.insertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
+        podcastDao.upsertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
         episodeDao.insertEpisodes(listOf(
             Episode(id = "ep-1", podcastFeedUrl = "feed-1", title = "Ep 1"),
         ))
@@ -111,7 +111,7 @@ class DatabaseTest {
 
     @Test
     fun markCompleted() = runTest {
-        podcastDao.insertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
+        podcastDao.upsertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
         episodeDao.insertEpisodes(listOf(
             Episode(id = "ep-1", podcastFeedUrl = "feed-1", title = "Ep 1"),
         ))
@@ -122,7 +122,7 @@ class DatabaseTest {
 
     @Test
     fun getInProgressEpisodes() = runTest {
-        podcastDao.insertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
+        podcastDao.upsertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
         episodeDao.insertEpisodes(listOf(
             Episode(id = "ep-1", podcastFeedUrl = "feed-1", title = "In Progress", publishedDate = 2000),
             Episode(id = "ep-2", podcastFeedUrl = "feed-1", title = "Not Started", publishedDate = 1000),
@@ -139,7 +139,7 @@ class DatabaseTest {
 
     @Test
     fun episodesSortedByDateDescending() = runTest {
-        podcastDao.insertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
+        podcastDao.upsertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
         episodeDao.insertEpisodes(listOf(
             Episode(id = "ep-old", podcastFeedUrl = "feed-1", title = "Old", publishedDate = 1000),
             Episode(id = "ep-new", podcastFeedUrl = "feed-1", title = "New", publishedDate = 3000),
@@ -153,8 +153,8 @@ class DatabaseTest {
 
     @Test
     fun getRecentEpisodesAcrossPodcasts() = runTest {
-        podcastDao.insertPodcast(Podcast(feedUrl = "feed-1", title = "Podcast A"))
-        podcastDao.insertPodcast(Podcast(feedUrl = "feed-2", title = "Podcast B"))
+        podcastDao.upsertPodcast(Podcast(feedUrl = "feed-1", title = "Podcast A"))
+        podcastDao.upsertPodcast(Podcast(feedUrl = "feed-2", title = "Podcast B"))
         episodeDao.insertEpisodes(listOf(
             Episode(id = "a-1", podcastFeedUrl = "feed-1", title = "A ep", publishedDate = 1000),
             Episode(id = "b-1", podcastFeedUrl = "feed-2", title = "B ep", publishedDate = 3000),
@@ -169,7 +169,7 @@ class DatabaseTest {
 
     @Test
     fun getRecentEpisodesRespectsLimit() = runTest {
-        podcastDao.insertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
+        podcastDao.upsertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
         episodeDao.insertEpisodes(listOf(
             Episode(id = "ep-1", podcastFeedUrl = "feed-1", title = "Ep 1", publishedDate = 1000),
             Episode(id = "ep-2", podcastFeedUrl = "feed-1", title = "Ep 2", publishedDate = 2000),
@@ -183,7 +183,7 @@ class DatabaseTest {
 
     @Test
     fun getDownloadedEpisodes() = runTest {
-        podcastDao.insertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
+        podcastDao.upsertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
         episodeDao.insertEpisodes(listOf(
             Episode(id = "ep-1", podcastFeedUrl = "feed-1", title = "Downloaded", downloadPath = "/path/to/file.mp3"),
             Episode(id = "ep-2", podcastFeedUrl = "feed-1", title = "Not Downloaded"),
@@ -197,7 +197,7 @@ class DatabaseTest {
 
     @Test
     fun reinsertingEpisodePreservesPlaybackPosition() = runTest {
-        podcastDao.insertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
+        podcastDao.upsertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
         episodeDao.insertEpisodes(listOf(
             Episode(id = "ep-1", podcastFeedUrl = "feed-1", title = "Ep 1"),
         ))
@@ -212,7 +212,7 @@ class DatabaseTest {
 
     @Test
     fun reinsertingEpisodePreservesCompletedFlag() = runTest {
-        podcastDao.insertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
+        podcastDao.upsertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
         episodeDao.insertEpisodes(listOf(
             Episode(id = "ep-1", podcastFeedUrl = "feed-1", title = "Ep 1"),
         ))
@@ -226,7 +226,7 @@ class DatabaseTest {
 
     @Test
     fun reinsertingEpisodePreservesDownloadPath() = runTest {
-        podcastDao.insertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
+        podcastDao.upsertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
         episodeDao.insertEpisodes(listOf(
             Episode(id = "ep-1", podcastFeedUrl = "feed-1", title = "Ep 1"),
         ))
@@ -240,7 +240,7 @@ class DatabaseTest {
 
     @Test
     fun markCompletedFalseReverses() = runTest {
-        podcastDao.insertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
+        podcastDao.upsertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
         episodeDao.insertEpisodes(listOf(
             Episode(id = "ep-1", podcastFeedUrl = "feed-1", title = "Ep 1"),
         ))
@@ -252,9 +252,9 @@ class DatabaseTest {
 
     @Test
     fun getPodcastsBatch() = runTest {
-        podcastDao.insertPodcast(Podcast(feedUrl = "feed-1", title = "Alpha"))
-        podcastDao.insertPodcast(Podcast(feedUrl = "feed-2", title = "Bravo"))
-        podcastDao.insertPodcast(Podcast(feedUrl = "feed-3", title = "Charlie"))
+        podcastDao.upsertPodcast(Podcast(feedUrl = "feed-1", title = "Alpha"))
+        podcastDao.upsertPodcast(Podcast(feedUrl = "feed-2", title = "Bravo"))
+        podcastDao.upsertPodcast(Podcast(feedUrl = "feed-3", title = "Charlie"))
         val batch = podcastDao.getPodcasts(listOf("feed-1", "feed-3", "missing"))
         assertEquals(2, batch.size)
         assertEquals(setOf("Alpha", "Charlie"), batch.map { it.title }.toSet())
@@ -262,7 +262,7 @@ class DatabaseTest {
 
     @Test
     fun updateDownloadPath() = runTest {
-        podcastDao.insertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
+        podcastDao.upsertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
         episodeDao.insertEpisodes(listOf(
             Episode(id = "ep-1", podcastFeedUrl = "feed-1", title = "Ep 1"),
         ))

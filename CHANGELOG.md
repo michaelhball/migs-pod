@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CHANGELOG.md, README.md, TODO.md
 
 ### Changed
+- The mini-player now also shows on a podcast's page, so playback started from its ⋮ menu is visible and reachable
 - Lists no longer re-run their database query on every recomposition
 - Feed refresh sends ETag / Last-Modified, so unchanged feeds come back as a tiny 304 instead of re-downloading the whole feed every hour (DB v4)
 - Updated Compose BOM 2024.12.01 → 2026.02.01

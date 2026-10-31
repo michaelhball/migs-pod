@@ -2,7 +2,9 @@ package com.migspod.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
@@ -108,16 +110,22 @@ fun MigsPodApp() {
     val currentRoute = navBackStackEntry?.destination?.route
     val showBottomBar = currentRoute in bottomBarRoutes
 
+    // The mini-player shows everywhere except Now Playing itself, including the
+    // podcast screen (where the tab bar is hidden) so playback started there is visible.
+    val showMiniPlayer = currentEpisodeId != null && currentRoute != Screen.NowPlaying.route
+
     Scaffold(
         bottomBar = {
-            if (showBottomBar) {
-                Column {
-                    if (currentEpisodeId != null) {
-                        MiniPlayer(
-                            repository = repository,
-                            onClick = { navController.openNowPlaying() }
-                        )
-                    }
+            Column {
+                if (showMiniPlayer) {
+                    MiniPlayer(
+                        repository = repository,
+                        onClick = { navController.openNowPlaying() },
+                        // With no tab bar below, it must clear the system gesture area itself.
+                        windowInsets = if (showBottomBar) WindowInsets(0) else WindowInsets.navigationBars,
+                    )
+                }
+                if (showBottomBar) {
                     NavigationBar {
                         NavigationBarItem(
                             icon = { Icon(Icons.Default.Search, contentDescription = "Search") },

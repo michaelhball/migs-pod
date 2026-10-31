@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Downloaded episodes would blow the 25 MB cloud-backup quota, and over quota
+    Android backs up nothing at all — not even subscriptions. A missing file after
+    a restore is forgotten on launch (PodcastRepository.reconcileDownloads).
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="downloads" />
+    </cloud-backup>
+</data-extraction-rules>

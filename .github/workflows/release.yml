@@ -45,12 +45,15 @@ jobs:
           keyPassword=$KEY_PASSWORD
           EOF
 
+      # `secrets` isn't available in step-level `if:` (it makes the whole workflow
+      # file invalid), so the presence check lives in the script.
       - name: Write google-services.json (if available)
-        if: ${{ secrets.GOOGLE_SERVICES_JSON != '' }}
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
-          echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
+          fi
 
       - name: Build signed APK + AAB
         run: ./gradlew --no-daemon :app:assembleRelease :app:bundleRelease
@@ -73,8 +76,10 @@ jobs:
 
       - name: Check Play Store configuration
         id: play
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
         run: |
-          if [ -n "${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}" ]; then
+          if [ -n "$PLAY_SERVICE_ACCOUNT_JSON" ]; then
             echo "configured=true" >> "$GITHUB_OUTPUT"
           else
             echo "configured=false" >> "$GITHUB_OUTPUT"

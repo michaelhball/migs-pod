@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated Coroutines 1.9.0 → 1.10.2
 
 ### Fixed
+- CI: lint errors (Media3 `UnstableApi` opt-in, stale transitive Fragment version) and an invalid `release.yml` (secrets used in a step `if:`)
 - Lint: String.format without Locale parameter
 - Lint: Exported service without permission
 - Lint: Uri.parse instead of toUri() KTX extension

@@ -90,7 +90,6 @@ dependencies {
     // Media3
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.session)
-    implementation(libs.androidx.media3.ui)
 
     // Image loading
     implementation(libs.coil.compose)
@@ -107,6 +106,12 @@ dependencies {
     // Firebase
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.crashlytics)
+
+    constraints {
+        // play-services-basement (via Firebase) pulls fragment 1.1.0, which breaks
+        // registerForActivityResult and fails lint.
+        implementation(libs.androidx.fragment)
+    }
 
     debugImplementation(libs.androidx.ui.tooling)
 

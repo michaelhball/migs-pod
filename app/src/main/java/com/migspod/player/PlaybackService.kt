@@ -1,10 +1,12 @@
 package com.migspod.player
 
 import android.content.Intent
+import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
@@ -19,6 +21,7 @@ import kotlinx.coroutines.launch
 
 private const val MEDIA_NOTIFICATION_ID = 1001
 
+@OptIn(UnstableApi::class)
 class PlaybackService : MediaSessionService() {
 
     private var mediaSession: MediaSession? = null

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
@@ -72,9 +73,9 @@ fun MiniPlayer(
     LaunchedEffect(player) {
         while (true) {
             val p = player
-            if (p != null && p.duration > 0) {
-                progress = p.currentPosition.toFloat() / p.duration.toFloat()
+            if (p != null) {
                 isPlaying = p.playWhenReady
+                if (p.duration > 0) progress = p.currentPosition.toFloat() / p.duration.toFloat()
             }
             delay(500)
         }
@@ -129,6 +130,17 @@ fun MiniPlayer(
                             imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = if (isPlaying) "Pause" else "Play",
                         )
+                    }
+                    // Only while paused, so it can't be hit by accident mid-listen.
+                    // Progress is already saved; this just puts the player away.
+                    if (!isPlaying) {
+                        IconButton(onClick = { PlayerController.close() }) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Close player",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
             }

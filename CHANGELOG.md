@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Close the mini-player: a ✕ appears next to play while paused; it puts the player away and it won't be restored on next launch (progress is kept)
 - Add a podcast by its RSS URL ("Add by URL" on the Search tab), for feeds that aren't in search such as private or members-only feeds; pasting a feed URL into the search box offers the same; `feed://`, `itpc://` and scheme-less URLs are accepted
 - Headphone / Bluetooth play button (and the system's media resume card) restarts the last unfinished episode even after the app was closed or killed
 - Custom launcher icon: bunny ears over headphones, a cool-gradient sibling to the migs-music icon (replaces the default placeholder)

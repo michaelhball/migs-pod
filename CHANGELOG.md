@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Downloads: an HTTP error or a Wi-Fi login page is no longer saved as the episode and marked "Downloaded"; failures show a message instead of a spinner that never stops; partial files are cleaned up; the same episode can't be downloaded twice at once; "Downloading…" now shows on every screen
 - Unsubscribing deletes that podcast's downloaded files (they were left on disk forever); leftover files from earlier unsubscribes and interrupted downloads are cleaned up on launch
 - Deleting a download from the episode sheet or ⋮ menu now stops playback if it's the playing episode (previously only the Downloads tab did)
+- A failed subscribe in Search left that row spinning and disabled forever with no explanation; it now resets and says why
 - Subscribing to a URL that isn't a feed (404, web page) no longer adds a blank, untitled podcast
 - Re-subscribing to a podcast could wipe its episodes' progress, played state and downloads (`REPLACE` + cascade)
 - Feed refresh now updates existing episodes' title, description, audio URL, date and duration (keeping progress/played/downloads), so a feed that moves its audio no longer leaves dead links

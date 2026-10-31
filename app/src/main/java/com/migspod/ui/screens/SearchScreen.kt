@@ -45,6 +45,7 @@ import coil.compose.AsyncImage
 import com.migspod.MigsPodApp as App
 import com.migspod.data.PodcastRepository
 import com.migspod.data.SearchResult
+import com.migspod.data.toUserMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -60,12 +61,27 @@ fun SearchScreen(
     var results by remember { mutableStateOf<List<SearchResult>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var subscribingUrl by remember { mutableStateOf<String?>(null) }
+    var subscribingUrls by remember { mutableStateOf(emptySet<String>()) }
     val scope = rememberCoroutineScope()
 
     val subscribedPodcasts by repository.getAllPodcasts().collectAsStateWithLifecycle(emptyList())
     val subscribedUrls = remember(subscribedPodcasts) {
         subscribedPodcasts.map { it.feedUrl }.toSet()
+    }
+
+    fun subscribe(feedUrl: String, openWhenDone: Boolean) {
+        subscribingUrls = subscribingUrls + feedUrl
+        // Run on the app scope so navigating away mid-fetch doesn't cancel the
+        // subscribe (which would skip the episode insert).
+        App.instance.appScope.launch {
+            val result = repository.subscribeToPodcast(feedUrl)
+            withContext(Dispatchers.Main) {
+                subscribingUrls = subscribingUrls - feedUrl
+                result
+                    .onSuccess { if (openWhenDone) onResultClick(feedUrl) }
+                    .onFailure { App.instance.showToast("Couldn't subscribe: ${it.toUserMessage()}") }
+            }
+        }
     }
 
     fun doSearch() {
@@ -118,27 +134,14 @@ fun SearchScreen(
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(results, key = { it.feedUrl }, contentType = { "result" }) { result ->
                 val isSubscribed = result.feedUrl in subscribedUrls
-                val isSubscribing = subscribingUrl == result.feedUrl
+                val isSubscribing = result.feedUrl in subscribingUrls
 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable(enabled = !isSubscribing) {
-                            if (isSubscribed) {
-                                onResultClick(result.feedUrl)
-                            } else {
-                                subscribingUrl = result.feedUrl
-                                val feedUrl = result.feedUrl
-                                // Run on the app scope so navigating away mid-fetch
-                                // doesn't cancel the subscribe (which would skip the
-                                // episode insert and leave the detail screen empty).
-                                App.instance.appScope.launch {
-                                    val res = repository.subscribeToPodcast(feedUrl)
-                                    if (res.isSuccess) {
-                                        withContext(Dispatchers.Main) { onResultClick(feedUrl) }
-                                    }
-                                }
-                            }
+                            if (isSubscribed) onResultClick(result.feedUrl)
+                            else subscribe(result.feedUrl, openWhenDone = true)
                         }
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -180,13 +183,7 @@ fun SearchScreen(
                             strokeWidth = 2.dp,
                         )
                     } else {
-                        IconButton(onClick = {
-                            subscribingUrl = result.feedUrl
-                            val feedUrl = result.feedUrl
-                            App.instance.appScope.launch {
-                                repository.subscribeToPodcast(feedUrl)
-                            }
-                        }) {
+                        IconButton(onClick = { subscribe(result.feedUrl, openWhenDone = false) }) {
                             Icon(Icons.Default.Add, contentDescription = "Subscribe")
                         }
                     }

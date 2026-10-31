@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,6 +26,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -48,6 +50,7 @@ import com.migspod.data.Episode
 import com.migspod.ui.components.LinkifiedText
 import com.migspod.data.Podcast
 import com.migspod.data.PodcastRepository
+import com.migspod.player.PlaybackState
 import com.migspod.player.PlayerController
 import com.migspod.ui.deleteDownload
 import com.migspod.ui.startDownload
@@ -71,11 +74,22 @@ fun PodcastDetailScreen(
     var podcast by remember { mutableStateOf<Podcast?>(null) }
     var isRefreshing by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
+    var confirmUnsubscribe by remember { mutableStateOf(false) }
     val downloadingIds by repository.downloadingIds.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(feedUrl) {
         podcast = withContext(Dispatchers.IO) { repository.getPodcast(feedUrl) }
+    }
+
+    fun unsubscribe(p: Podcast) {
+        // Its episodes and downloads are about to disappear; don't keep playing one.
+        if (PlaybackState.currentEpisodeId.value in episodes.map { it.id }) PlayerController.close()
+        // App scope: the file cleanup shouldn't be cancelled by leaving the screen.
+        App.instance.appScope.launch {
+            repository.unsubscribe(p)
+            withContext(Dispatchers.Main) { onBack() }
+        }
     }
 
     fun doRefresh() {
@@ -104,15 +118,30 @@ fun PodcastDetailScreen(
                         text = { Text("Unsubscribe") },
                         onClick = {
                             showMenu = false
-                            scope.launch {
-                                podcast?.let { repository.unsubscribe(it) }
-                                onBack()
-                            }
+                            confirmUnsubscribe = true
                         }
                     )
                 }
             }
         )
+
+        val p = podcast
+        if (confirmUnsubscribe && p != null) {
+            AlertDialog(
+                onDismissRequest = { confirmUnsubscribe = false },
+                title = { Text("Unsubscribe from ${p.title}?") },
+                text = { Text("This removes its episodes, your listening progress and any downloads.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        confirmUnsubscribe = false
+                        unsubscribe(p)
+                    }) { Text("Unsubscribe") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { confirmUnsubscribe = false }) { Text("Cancel") }
+                },
+            )
+        }
 
         PullToRefreshBox(
             isRefreshing = isRefreshing,

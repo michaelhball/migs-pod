@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.migspod.data.AppDatabase
@@ -16,6 +17,9 @@ import com.migspod.ui.screens.PodcastDetailScreen
 import com.migspod.ui.theme.MigsPodTheme
 import kotlinx.coroutines.test.runTest
 import org.junit.After
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -138,5 +142,41 @@ class PodcastDetailScreenTest {
 
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("In Progress Episode").assertIsDisplayed()
+    }
+
+    @Test
+    fun unsubscribeAsksForConfirmation() = runTest {
+        db.podcastDao().upsertPodcast(Podcast(feedUrl = "feed-1", title = "Science Hour"))
+        var backCalled = false
+
+        composeTestRule.setContent {
+            MigsPodTheme {
+                PodcastDetailScreen(
+                    feedUrl = "feed-1",
+                    repository = repository,
+                    onBack = { backCalled = true },
+                    onEpisodeClick = {},
+                )
+            }
+        }
+        composeTestRule.waitUntil(timeoutMillis = 5000) {
+            composeTestRule.onAllNodesWithText("Science Hour").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        // Cancel keeps the podcast
+        composeTestRule.onNodeWithContentDescription("More").performClick()
+        composeTestRule.onNodeWithText("Unsubscribe").performClick()
+        composeTestRule.onNodeWithText("Unsubscribe from Science Hour?").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Cancel").performClick()
+        composeTestRule.waitForIdle()
+        assertNotNull(db.podcastDao().getPodcast("feed-1"))
+        assertFalse(backCalled)
+
+        // Confirm removes it and leaves the screen
+        composeTestRule.onNodeWithContentDescription("More").performClick()
+        composeTestRule.onNodeWithText("Unsubscribe").performClick()
+        composeTestRule.onNodeWithText("Unsubscribe").performClick()
+        composeTestRule.waitUntil(timeoutMillis = 5000) { backCalled }
+        assertNull(db.podcastDao().getPodcast("feed-1"))
     }
 }

@@ -107,13 +107,6 @@ interface EpisodeDao {
 
     @Query("""
         SELECT e.* FROM episodes e
-        WHERE e.playbackPositionMs > 0 AND e.isCompleted = 0
-        ORDER BY e.publishedDate DESC
-    """)
-    fun getInProgressEpisodes(): Flow<List<Episode>>
-
-    @Query("""
-        SELECT e.* FROM episodes e
         INNER JOIN podcasts p ON e.podcastFeedUrl = p.feedUrl
         ORDER BY e.publishedDate DESC
         LIMIT :limit

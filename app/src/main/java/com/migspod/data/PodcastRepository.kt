@@ -113,8 +113,6 @@ class PodcastRepository(
 
     fun getEpisodeFlow(id: String): Flow<Episode?> = episodeDao.getEpisodeFlow(id)
 
-    fun getInProgressEpisodes(): Flow<List<Episode>> = episodeDao.getInProgressEpisodes()
-
     suspend fun updatePlaybackPosition(episodeId: String, positionMs: Long) {
         episodeDao.updatePlaybackPosition(episodeId, positionMs)
     }

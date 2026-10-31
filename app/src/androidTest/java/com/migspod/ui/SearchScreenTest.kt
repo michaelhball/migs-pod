@@ -45,7 +45,7 @@ class SearchScreenTest {
     fun searchScreenShowsSearchField() {
         composeTestRule.setContent {
             MigsPodTheme {
-                SearchScreen(repository = repository, onSubscribed = {})
+                SearchScreen(repository = repository)
             }
         }
         composeTestRule.onNodeWithText("Search for podcasts...").assertIsDisplayed()
@@ -55,7 +55,7 @@ class SearchScreenTest {
     fun searchScreenShowsTitle() {
         composeTestRule.setContent {
             MigsPodTheme {
-                SearchScreen(repository = repository, onSubscribed = {})
+                SearchScreen(repository = repository)
             }
         }
         composeTestRule.onNodeWithText("Search Podcasts").assertIsDisplayed()
@@ -65,7 +65,7 @@ class SearchScreenTest {
     fun canTypeInSearchField() {
         composeTestRule.setContent {
             MigsPodTheme {
-                SearchScreen(repository = repository, onSubscribed = {})
+                SearchScreen(repository = repository)
             }
         }
         composeTestRule.onNodeWithText("Search for podcasts...")
@@ -77,7 +77,7 @@ class SearchScreenTest {
     fun searchWithQueryShowsResultsOrLoading() {
         composeTestRule.setContent {
             MigsPodTheme {
-                SearchScreen(repository = repository, onSubscribed = {})
+                SearchScreen(repository = repository)
             }
         }
         composeTestRule.onNodeWithText("Search for podcasts...")

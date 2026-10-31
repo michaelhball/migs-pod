@@ -61,7 +61,6 @@ private val searchResultsSaver = listSaver<List<SearchResult>, String>(
 @Composable
 fun SearchScreen(
     repository: PodcastRepository,
-    onSubscribed: () -> Unit,
     onResultClick: (feedUrl: String) -> Unit = {},
 ) {
     // Saveable so results survive switching tabs or opening a podcast and coming back.

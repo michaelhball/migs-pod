@@ -97,7 +97,6 @@ class PlaybackService : MediaSessionService() {
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                PlaybackState.currentMediaItem.value = mediaItem
                 PlaybackState.currentEpisodeId.value = mediaItem?.mediaId
             }
 
@@ -121,7 +120,6 @@ class PlaybackService : MediaSessionService() {
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
-                PlaybackState.playbackState.value = playbackState
                 if (playbackState == Player.STATE_ENDED) {
                     markCurrentCompleted()
                     // No autoplay: the episode is done, so tear the player down.

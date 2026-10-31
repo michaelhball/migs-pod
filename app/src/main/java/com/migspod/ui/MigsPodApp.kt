@@ -182,11 +182,6 @@ fun MigsPodApp() {
                 composable(Screen.Search.route) {
                     SearchScreen(
                         repository = repository,
-                        onSubscribed = {
-                            navController.navigate(Screen.Library.route) {
-                                popUpTo(Screen.Library.route) { inclusive = true }
-                            }
-                        },
                         onResultClick = { feedUrl ->
                             navController.navigate(Screen.PodcastDetail.createRoute(feedUrl))
                         },

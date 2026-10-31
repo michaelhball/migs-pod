@@ -121,23 +121,6 @@ class DatabaseTest {
     }
 
     @Test
-    fun getInProgressEpisodes() = runTest {
-        podcastDao.upsertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
-        episodeDao.insertEpisodes(listOf(
-            Episode(id = "ep-1", podcastFeedUrl = "feed-1", title = "In Progress", publishedDate = 2000),
-            Episode(id = "ep-2", podcastFeedUrl = "feed-1", title = "Not Started", publishedDate = 1000),
-            Episode(id = "ep-3", podcastFeedUrl = "feed-1", title = "Completed", publishedDate = 3000),
-        ))
-        episodeDao.updatePlaybackPosition("ep-1", 5000)
-        episodeDao.updatePlaybackPosition("ep-3", 10000)
-        episodeDao.markCompleted("ep-3", true)
-
-        val inProgress = episodeDao.getInProgressEpisodes().first()
-        assertEquals(1, inProgress.size)
-        assertEquals("ep-1", inProgress[0].id)
-    }
-
-    @Test
     fun episodesSortedByDateDescending() = runTest {
         podcastDao.upsertPodcast(Podcast(feedUrl = "feed-1", title = "Test"))
         episodeDao.insertEpisodes(listOf(

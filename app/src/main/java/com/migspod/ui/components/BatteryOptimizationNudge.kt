@@ -15,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.edit
 import androidx.core.content.getSystemService
 
 private const val PREFS = "migspod_player"
@@ -44,10 +45,9 @@ fun BatteryOptimizationNudge() {
     if (!show) return
 
     fun markShownAndHide() {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(KEY_NUDGE_SHOWN, true)
-            .apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit {
+            putBoolean(KEY_NUDGE_SHOWN, true)
+        }
         show = false
     }
 

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Feeds, audio and artwork come from thousands of hosts and plenty still serve
+    plain http://. A podcast player has to follow whatever URLs a feed publishes,
+    so cleartext is allowed (this also covers the localhost MockWebServer tests).
+-->
+<network-security-config xmlns:tools="http://schemas.android.com/tools">
+    <base-config
+        cleartextTrafficPermitted="true"
+        tools:ignore="InsecureBaseConfiguration" />
+</network-security-config>

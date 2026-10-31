@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated Coroutines 1.9.0 → 1.10.2
 
 ### Fixed
+- Podcasts whose feed, audio or artwork use plain `http://` couldn't be subscribed to, played, downloaded or shown (cleartext was blocked)
 - Playback failures (no connection, missing audio) now show a message instead of silently doing nothing
 - Position wasn't saved after seeking while paused; the final save when the player service shut down was usually cancelled; switching episodes could drop up to 5s of the previous one's progress; a late periodic save could land after an episode was marked played
 - The player connection leaked the activity on rotation; it now follows the activity's start/stop

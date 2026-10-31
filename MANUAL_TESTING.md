@@ -2,12 +2,33 @@
 
 Things automation can't verify reliably. Run end-to-end on a real device before the first Play Store push. Tick each box; note pass/fail beside it.
 
-## Changes since the last pass
+## Round 3 (current) — what changed and what to check
 
-- Bottom nav order is now **Search · Library · New · Downloads**; "New" tab icon is an RSS feed
-- Podcast description in detail header is **tap-to-expand**
-- Episode detail bottom sheet now **fills the screen** so the description has space to scroll; URLs in descriptions are **clickable**
-- "Delete download" button is hidden in the episode sheet when opened from the **Downloads** tab (the list already has its own delete)
+Install the new debug build **over** the existing one (`./gradlew installDebug`) — do not uninstall; the first check is that your real data survives the DB v3 → v4 upgrade.
+
+**Upgrade & data**
+- [ ] App opens after the upgrade; Library, progress bars, ✓ Played and Downloads are all intact
+- [ ] Pull-to-refresh on New: episodes that had no date now show one and sort correctly
+- [ ] Show notes: paragraphs are separated, no `&amp;` / `&nbsp;`, link targets shown as "text (https://…)" and tappable
+
+**New features**
+- [ ] Search → **Add by URL** → paste a real feed URL (e.g. `https://feeds.npr.org/510289/podcast.xml`) → subscribes and opens the podcast
+- [ ] Add by URL with `example.com` → "That doesn't look like a podcast feed", nothing added to Library
+- [ ] Paste a feed URL into the search box and hit search → the Add dialog opens prefilled
+- [ ] Pause → mini-player shows **✕** → tap it → player gone; relaunch → it does **not** come back
+- [ ] Podcast ⋮ → Unsubscribe → confirmation dialog; Cancel keeps it; Unsubscribe removes it (and its downloads)
+- [ ] **Headphone/Bluetooth resume**: play something, pause, swipe MigsPod from recents (or let the OS kill it), press play on the headphones → the last episode resumes at its position
+
+**Fixes to confirm**
+- [ ] Mini-player now also shows on a podcast's page (play from an episode's ⋮ menu there)
+- [ ] Now Playing → Episode details → Resume → still a single Now Playing (one back press leaves), no jump back
+- [ ] Switch tabs after a search → come back → results and scroll position still there
+- [ ] Airplane mode, play a non-downloaded episode → a "No connection" message (not silence)
+- [ ] Download in airplane mode → "Download failed: No internet connection", spinner clears, can retry
+- [ ] Start a download, leave the screen, come back → still shows "Downloading…" (and on the New tab too)
+- [ ] Delete the download of the playing episode from the **episode sheet** → playback stops
+- [ ] Seek while paused, kill the app, relaunch → resumes at the seek position
+- [ ] An `http://` feed or episode plays (cleartext was blocked before)
 
 ## 0. Setup
 
@@ -163,7 +184,7 @@ Or simpler: wait ~1h with the app installed and Wi-Fi available, then check that
 
 ## 16. Upgrade path
 
-Since v0.1.0 has never shipped, there's no real upgrade scenario yet. After first release, before any v0.2.0:
+Round 3 is the first real upgrade (DB v3 → v4, covered by `MigrationTest` and the Round 3 checklist above). For future releases:
 
 - [ ] Install old version (`adb install -r app-debug-0.1.0.apk`)
 - [ ] Subscribe to 2 podcasts, listen to 30s of one, download one

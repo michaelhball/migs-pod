@@ -116,6 +116,7 @@ class PlaybackService : MediaSessionService() {
                             savePosition(episodeId, oldPosition.positionMs)
                         }
                     }
+                    else -> Unit
                 }
             }
 

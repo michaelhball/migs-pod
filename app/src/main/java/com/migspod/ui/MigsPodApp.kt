@@ -26,6 +26,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -67,6 +69,26 @@ private val bottomBarRoutes = listOf(
     Screen.NewEpisodes.route, Screen.Downloads.route,
 )
 
+// Standard bottom-nav behaviour: each tab keeps its state (scroll, search results)
+// and re-tapping the current tab doesn't stack a new copy.
+private fun NavController.navigateToTab(route: String) {
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
+    }
+}
+
+private fun NavController.openNowPlaying() {
+    navigate(Screen.NowPlaying.route) { launchSingleTop = true }
+}
+
+// Back can fire twice (button + swipe, or a swipe racing the episode ending); a
+// second blind pop would take the screen underneath with it.
+private fun NavController.popIfCurrent(route: String) {
+    if (currentDestination?.route == route) popBackStack()
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MigsPodApp() {
@@ -93,7 +115,7 @@ fun MigsPodApp() {
                     if (currentEpisodeId != null) {
                         MiniPlayer(
                             repository = repository,
-                            onClick = { navController.navigate(Screen.NowPlaying.route) }
+                            onClick = { navController.openNowPlaying() }
                         )
                     }
                     NavigationBar {
@@ -101,41 +123,25 @@ fun MigsPodApp() {
                             icon = { Icon(Icons.Default.Search, contentDescription = "Search") },
                             label = { Text("Search") },
                             selected = currentRoute == Screen.Search.route,
-                            onClick = {
-                                navController.navigate(Screen.Search.route) {
-                                    popUpTo(Screen.Library.route)
-                                }
-                            }
+                            onClick = { navController.navigateToTab(Screen.Search.route) }
                         )
                         NavigationBarItem(
                             icon = { Icon(Icons.Default.Home, contentDescription = "Library") },
                             label = { Text("Library") },
                             selected = currentRoute == Screen.Library.route,
-                            onClick = {
-                                navController.navigate(Screen.Library.route) {
-                                    popUpTo(Screen.Library.route) { inclusive = true }
-                                }
-                            }
+                            onClick = { navController.navigateToTab(Screen.Library.route) }
                         )
                         NavigationBarItem(
                             icon = { Icon(Icons.Default.RssFeed, contentDescription = "New") },
                             label = { Text("New") },
                             selected = currentRoute == Screen.NewEpisodes.route,
-                            onClick = {
-                                navController.navigate(Screen.NewEpisodes.route) {
-                                    popUpTo(Screen.Library.route)
-                                }
-                            }
+                            onClick = { navController.navigateToTab(Screen.NewEpisodes.route) }
                         )
                         NavigationBarItem(
                             icon = { Icon(Icons.Default.Download, contentDescription = "Downloads") },
                             label = { Text("Downloads") },
                             selected = currentRoute == Screen.Downloads.route,
-                            onClick = {
-                                navController.navigate(Screen.Downloads.route) {
-                                    popUpTo(Screen.Library.route)
-                                }
-                            }
+                            onClick = { navController.navigateToTab(Screen.Downloads.route) }
                         )
                     }
                 }
@@ -199,7 +205,7 @@ fun MigsPodApp() {
                     PodcastDetailScreen(
                         feedUrl = feedUrl,
                         repository = repository,
-                        onBack = { navController.popBackStack() },
+                        onBack = { navController.popIfCurrent(Screen.PodcastDetail.route) },
                         onEpisodeClick = { episodeId ->
                             sheetTarget = EpisodeSheetTarget(episodeId, showDeleteAction = true)
                         },
@@ -208,7 +214,7 @@ fun MigsPodApp() {
                 composable(Screen.NowPlaying.route) {
                     NowPlayingScreen(
                         repository = repository,
-                        onBack = { navController.popBackStack() },
+                        onBack = { navController.popIfCurrent(Screen.NowPlaying.route) },
                         onShowDetails = {
                             currentEpisodeId?.let { id ->
                                 sheetTarget = EpisodeSheetTarget(id, showDeleteAction = true)
@@ -235,7 +241,7 @@ fun MigsPodApp() {
             onDismiss = { sheetTarget = null },
             onNowPlaying = {
                 sheetTarget = null
-                navController.navigate(Screen.NowPlaying.route)
+                navController.openNowPlaying()
             },
         )
     }

@@ -58,7 +58,8 @@ fun NewEpisodesScreen(
     repository: PodcastRepository,
     onEpisodeClick: (String) -> Unit,
 ) {
-    val episodes by repository.getRecentEpisodes().collectAsStateWithLifecycle(emptyList())
+    val episodesOrNull by remember { repository.getRecentEpisodes() }.collectAsStateWithLifecycle(null)
+    val episodes = episodesOrNull.orEmpty()
     var isRefreshing by remember { mutableStateOf(false) }
     val downloadingIds by repository.downloadingIds.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -77,6 +78,7 @@ fun NewEpisodesScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(title = { Text("New Episodes") })
 
+        if (episodesOrNull == null) return@Column
         if (episodes.isEmpty() && !isRefreshing) {
             Column(
                 modifier = Modifier.fillMaxSize(),

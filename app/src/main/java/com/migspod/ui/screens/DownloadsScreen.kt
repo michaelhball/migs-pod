@@ -66,7 +66,8 @@ fun DownloadsScreen(
     repository: PodcastRepository,
     onEpisodeClick: (String) -> Unit,
 ) {
-    val downloadedEpisodes by repository.getDownloadedEpisodes().collectAsStateWithLifecycle(emptyList())
+    val downloadedOrNull by remember { repository.getDownloadedEpisodes() }.collectAsStateWithLifecycle(null)
+    val downloadedEpisodes = downloadedOrNull.orEmpty()
     var sortMode by rememberSaveable { mutableStateOf(SortMode.BY_DATE) }
 
     // Cache podcast metadata — single batch query
@@ -112,7 +113,9 @@ fun DownloadsScreen(
             }
         )
 
-        if (downloadedEpisodes.isEmpty()) {
+        if (downloadedOrNull == null) {
+            // Still loading: render nothing rather than flashing the empty state.
+        } else if (downloadedEpisodes.isEmpty()) {
             Column(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.Center,

@@ -80,8 +80,11 @@ class DownloadsScreenTest {
         }
 
         composeTestRule.waitUntil(timeoutMillis = 5000) {
-            composeTestRule.onAllNodesWithText("Beta Podcast").fetchSemanticsNodes().isNotEmpty()
+            composeTestRule.onAllNodesWithText("Beta Ep Newer").fetchSemanticsNodes().isNotEmpty()
         }
+        // Default is by date; switch to grouped.
+        composeTestRule.onNodeWithText("By podcast").performClick()
+        composeTestRule.waitForIdle()
         // Beta Podcast should appear first (has the newest episode at date 3000)
         composeTestRule.onNodeWithText("Beta Podcast").assertIsDisplayed()
         composeTestRule.onNodeWithText("Beta Ep Newer").assertIsDisplayed()
@@ -126,19 +129,17 @@ class DownloadsScreenTest {
             }
         }
 
-        // Default is grouped — should show podcast headers
+        // Default is by date — the toggle offers "By podcast"
         composeTestRule.waitUntil(timeoutMillis = 5000) {
-            composeTestRule.onAllNodesWithText("Beta Podcast").fetchSemanticsNodes().isNotEmpty()
+            composeTestRule.onAllNodesWithText("Beta Ep").fetchSemanticsNodes().isNotEmpty()
         }
-        composeTestRule.onNodeWithText("Beta Podcast").assertIsDisplayed()
-
-        // Toggle shows "By date" button, tap it to switch
-        composeTestRule.onNodeWithText("By date").assertIsDisplayed()
-        composeTestRule.onNodeWithText("By date").performClick()
+        composeTestRule.onNodeWithText("By podcast").assertIsDisplayed()
+        composeTestRule.onNodeWithText("By podcast").performClick()
         composeTestRule.waitForIdle()
 
-        // Now in date mode — button should say "By podcast"
-        composeTestRule.onNodeWithText("By podcast").assertIsDisplayed()
+        // Now grouped — podcast headers, and the toggle offers "By date"
+        composeTestRule.onNodeWithText("By date").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Beta Podcast").assertIsDisplayed()
 
         // Episodes still visible
         composeTestRule.onNodeWithText("Alpha Ep").assertIsDisplayed()

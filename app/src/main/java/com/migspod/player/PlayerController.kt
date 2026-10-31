@@ -51,6 +51,14 @@ object PlayerController {
     }
 
     suspend fun playEpisode(episode: Episode) {
+        val controller = mediaController ?: return
+        // Already loaded (e.g. "Resume" from its own sheet): just carry on. Reloading
+        // would rebuffer and jump back to the last saved position (up to 5s stale).
+        if (controller.currentMediaItem?.mediaId == episode.id) {
+            controller.play()
+            return
+        }
+
         PlaybackState.currentEpisodeId.value = episode.id
         saveLastEpisode(episode.id)
 
@@ -58,7 +66,6 @@ object PlayerController {
             MigsPodApp.instance.database.podcastDao().getPodcast(episode.podcastFeedUrl)
         }
 
-        val controller = mediaController ?: return
         // Pass the start position into setMediaItem rather than seekTo() afterwards —
         // a seek on a not-yet-prepared item via MediaController is dropped, which is
         // why resume was starting from 0.
@@ -102,7 +109,12 @@ object PlayerController {
     }
 
     fun stop() {
-        mediaController?.stop()
+        mediaController?.run {
+            stop()
+            // Unload the item too, so a later play can't resume a stale URI
+            // (e.g. the file of a download that was just deleted).
+            clearMediaItems()
+        }
         PlaybackState.currentEpisodeId.value = null
     }
 

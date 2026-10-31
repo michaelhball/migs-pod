@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CHANGELOG.md, README.md, TODO.md
 
 ### Changed
+- Lists no longer re-run their database query on every recomposition
 - Feed refresh sends ETag / Last-Modified, so unchanged feeds come back as a tiny 304 instead of re-downloading the whole feed every hour (DB v4)
 - Updated Compose BOM 2024.12.01 → 2026.02.01
 - Updated Room 2.6.1 → 2.8.4
@@ -30,6 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated Coroutines 1.9.0 → 1.10.2
 
 ### Fixed
+- Now Playing → Episode details → Resume opened a second Now Playing on top and restarted the episode (jumping back up to 5s); double-tapping the mini-player stacked two Now Playing screens; a double back could pop the screen underneath too
+- Switching tabs lost search results and scroll positions; coming back from a podcast to Search lost the results
+- Library, New and Downloads briefly flashed their empty state while loading
 - Downloads: an HTTP error or a Wi-Fi login page is no longer saved as the episode and marked "Downloaded"; failures show a message instead of a spinner that never stops; partial files are cleaned up; the same episode can't be downloaded twice at once; "Downloading…" now shows on every screen
 - Unsubscribing deletes that podcast's downloaded files (they were left on disk forever); leftover files from earlier unsubscribes and interrupted downloads are cleaned up on launch
 - Deleting a download from the episode sheet or ⋮ menu now stops playback if it's the playing episode (previously only the Downloads tab did)

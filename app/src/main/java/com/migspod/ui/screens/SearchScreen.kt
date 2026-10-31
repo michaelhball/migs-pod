@@ -31,6 +31,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -50,6 +52,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+private val searchResultsSaver = listSaver<List<SearchResult>, String>(
+    save = { results -> results.flatMap { listOf(it.feedUrl, it.title, it.author, it.artworkUrl) } },
+    restore = { flat -> flat.chunked(4) { (feedUrl, title, author, artworkUrl) -> SearchResult(feedUrl, title, author, artworkUrl) } },
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
@@ -57,14 +64,15 @@ fun SearchScreen(
     onSubscribed: () -> Unit,
     onResultClick: (feedUrl: String) -> Unit = {},
 ) {
-    var query by remember { mutableStateOf("") }
-    var results by remember { mutableStateOf<List<SearchResult>>(emptyList()) }
+    // Saveable so results survive switching tabs or opening a podcast and coming back.
+    var query by rememberSaveable { mutableStateOf("") }
+    var results by rememberSaveable(stateSaver = searchResultsSaver) { mutableStateOf(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var subscribingUrls by remember { mutableStateOf(emptySet<String>()) }
     val scope = rememberCoroutineScope()
 
-    val subscribedPodcasts by repository.getAllPodcasts().collectAsStateWithLifecycle(emptyList())
+    val subscribedPodcasts by remember { repository.getAllPodcasts() }.collectAsStateWithLifecycle(emptyList())
     val subscribedUrls = remember(subscribedPodcasts) {
         subscribedPodcasts.map { it.feedUrl }.toSet()
     }

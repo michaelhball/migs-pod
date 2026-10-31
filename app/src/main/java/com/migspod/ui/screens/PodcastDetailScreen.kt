@@ -66,7 +66,8 @@ fun PodcastDetailScreen(
     onBack: () -> Unit,
     onEpisodeClick: (String) -> Unit,
 ) {
-    val episodes by repository.getEpisodesForPodcast(feedUrl).collectAsStateWithLifecycle(emptyList())
+    val episodes by remember(feedUrl) { repository.getEpisodesForPodcast(feedUrl) }
+        .collectAsStateWithLifecycle(emptyList())
     var podcast by remember { mutableStateOf<Podcast?>(null) }
     var isRefreshing by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }

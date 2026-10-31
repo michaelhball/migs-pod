@@ -20,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,12 +38,15 @@ fun LibraryScreen(
     repository: PodcastRepository,
     onPodcastClick: (feedUrl: String) -> Unit,
 ) {
-    val podcasts by repository.getAllPodcasts().collectAsStateWithLifecycle(emptyList())
+    // null until the first query lands, so the empty state never flashes and the
+    // grid's saved scroll position has items to restore onto.
+    val podcasts by remember { repository.getAllPodcasts() }.collectAsStateWithLifecycle(null)
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(title = { Text("MigsPod") })
 
-        if (podcasts.isEmpty()) {
+        val loaded = podcasts ?: return@Column
+        if (loaded.isEmpty()) {
             Column(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.Center,
@@ -69,7 +73,7 @@ fun LibraryScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                items(podcasts, key = { it.feedUrl }, contentType = { "podcast" }) { podcast ->
+                items(loaded, key = { it.feedUrl }, contentType = { "podcast" }) { podcast ->
                     Column(
                         modifier = Modifier
                             .width(110.dp)

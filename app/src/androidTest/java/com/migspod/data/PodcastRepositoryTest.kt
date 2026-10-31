@@ -337,6 +337,21 @@ class PodcastRepositoryTest {
     }
 
     @Test
+    fun reconcileKeepsADownloadStoredUnderAnEquivalentPath() = runTest {
+        subscribeWithEpisode("/ep.mp3")
+        downloadsDir.mkdirs()
+        val file = File(downloadsDir, "kept.mp3").apply { writeText("audio") }
+        // Same file, spelled differently (as /data/data vs /data/user/0 would be).
+        val equivalentPath = File(downloadsDir, "../${downloadsDir.name}/kept.mp3").path
+        db.episodeDao().updateDownloadPath("ep-d", equivalentPath)
+
+        repository.reconcileDownloads()
+
+        assertTrue(file.exists())
+        assertEquals(equivalentPath, db.episodeDao().getEpisode("ep-d")!!.downloadPath)
+    }
+
+    @Test
     fun reconcileForgetsMissingFilesAndDeletesOrphans() = runTest {
         subscribeWithEpisode("/ep.mp3")
         server.enqueue(audioResponse())

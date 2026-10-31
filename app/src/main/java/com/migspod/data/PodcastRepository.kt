@@ -206,14 +206,17 @@ class PodcastRepository(
     suspend fun reconcileDownloads() = withContext(Dispatchers.IO) {
         // Snapshot in-flight downloads first so one finishing mid-scan is never deleted.
         val inFlightNames = _downloadingIds.value.map { downloadFileFor(it).name }.toSet()
+        // Canonical paths: a stored /data/data/… path and a listed /data/user/0/… one
+        // are the same file, and must never be mistaken for an orphan.
         val referencedPaths = HashSet<String>()
         for (episode in episodeDao.getDownloadedEpisodesOnce()) {
             val path = episode.downloadPath ?: continue
-            if (File(path).exists()) referencedPaths += path
+            val file = File(path)
+            if (file.exists()) referencedPaths += file.canonicalPath
             else episodeDao.updateDownloadPath(episode.id, null)
         }
         downloadsDir.listFiles()?.forEach { file ->
-            val referenced = file.absolutePath in referencedPaths
+            val referenced = file.canonicalPath in referencedPaths
             val inFlight = file.name.removeSuffix(PART_SUFFIX) in inFlightNames
             if (!referenced && !inFlight) file.delete()
         }

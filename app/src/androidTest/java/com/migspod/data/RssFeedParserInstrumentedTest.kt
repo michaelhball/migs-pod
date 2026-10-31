@@ -119,4 +119,25 @@ class RssFeedParserInstrumentedTest {
         assertEquals("Empty Podcast", feed.title)
         assertEquals(0, feed.episodes.size)
     }
+
+    @Test
+    fun parse_showNotesAndLooseDates() {
+        val feedXml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <rss version="2.0">
+              <channel>
+                <title>Notes Podcast</title>
+                <item>
+                  <title>Episode</title>
+                  <pubDate>05 Jan 2024 10:00 GMT</pubDate>
+                  <description><![CDATA[<p>Tom &amp; Jerry&rsquo;s show.</p><p>Part two.</p>]]></description>
+                  <enclosure url="https://example.com/ep.mp3" type="audio/mpeg" length="1"/>
+                </item>
+              </channel>
+            </rss>
+        """.trimIndent()
+        val episode = RssFeedParser.parse(feedXml.byteInputStream()).episodes.single()
+        assertEquals("Tom & Jerry’s show.\n\nPart two.", episode.description)
+        assertEquals(1_704_448_800_000L, episode.publishedDate)
+    }
 }

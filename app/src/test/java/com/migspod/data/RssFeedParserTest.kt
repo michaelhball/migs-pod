@@ -50,22 +50,102 @@ class RssFeedParserTest {
 
     // --- Date parsing ---
 
+    // 2024-01-05T10:00:00Z
+    private val jan5At10Utc = 1_704_448_800_000L
+
     @Test
     fun parseDate_rfc2822() {
-        val result = RssFeedParser.parseDate("Mon, 01 Jan 2024 12:00:00 +0000")
-        assert(result > 0) { "Expected a positive timestamp, got $result" }
+        assertEquals(1_704_110_400_000L, RssFeedParser.parseDate("Mon, 01 Jan 2024 12:00:00 +0000"))
     }
 
     @Test
     fun parseDate_rfc2822WithTimezone() {
-        val result = RssFeedParser.parseDate("Wed, 15 Mar 2023 08:30:00 GMT")
-        assert(result > 0) { "Expected a positive timestamp, got $result" }
+        assertEquals(1_678_869_000_000L, RssFeedParser.parseDate("Wed, 15 Mar 2023 08:30:00 GMT"))
+    }
+
+    @Test
+    fun parseDate_singleDigitDay() {
+        assertEquals(jan5At10Utc, RssFeedParser.parseDate("Fri, 5 Jan 2024 10:00:00 +0000"))
+    }
+
+    @Test
+    fun parseDate_noWeekday() {
+        assertEquals(jan5At10Utc, RssFeedParser.parseDate("05 Jan 2024 10:00:00 +0000"))
+    }
+
+    @Test
+    fun parseDate_wrongWeekdayIsIgnored() {
+        // Jan 5 2024 was a Friday; feeds get this wrong surprisingly often.
+        assertEquals(jan5At10Utc, RssFeedParser.parseDate("Mon, 05 Jan 2024 10:00:00 +0000"))
+    }
+
+    @Test
+    fun parseDate_noSeconds() {
+        assertEquals(jan5At10Utc, RssFeedParser.parseDate("Fri, 05 Jan 2024 10:00 +0000"))
+    }
+
+    @Test
+    fun parseDate_negativeOffset() {
+        assertEquals(jan5At10Utc, RssFeedParser.parseDate("Fri, 05 Jan 2024 05:00:00 -0500"))
+    }
+
+    @Test
+    fun parseDate_offsetWithColon() {
+        assertEquals(jan5At10Utc, RssFeedParser.parseDate("Fri, 05 Jan 2024 11:00:00 +01:00"))
+    }
+
+    @Test
+    fun parseDate_namedZones() {
+        assertEquals(jan5At10Utc, RssFeedParser.parseDate("Fri, 05 Jan 2024 05:00:00 EST"))
+        assertEquals(jan5At10Utc, RssFeedParser.parseDate("Fri, 05 Jan 2024 02:00:00 PST"))
+        assertEquals(jan5At10Utc, RssFeedParser.parseDate("Fri, 05 Jan 2024 10:00:00 UT"))
+        assertEquals(jan5At10Utc, RssFeedParser.parseDate("Fri, 05 Jan 2024 10:00:00 UTC"))
+    }
+
+    @Test
+    fun parseDate_missingZoneAssumesUtc() {
+        assertEquals(jan5At10Utc, RssFeedParser.parseDate("Fri, 05 Jan 2024 10:00:00"))
+    }
+
+    @Test
+    fun parseDate_unknownZoneAssumesUtc() {
+        assertEquals(jan5At10Utc, RssFeedParser.parseDate("Fri, 05 Jan 2024 10:00:00 XYZ"))
+    }
+
+    @Test
+    fun parseDate_fullMonthNameAndCase() {
+        assertEquals(jan5At10Utc, RssFeedParser.parseDate("Friday, 05 January 2024 10:00:00 GMT"))
+        assertEquals(jan5At10Utc, RssFeedParser.parseDate("fri, 05 JAN 2024 10:00:00 gmt"))
+    }
+
+    @Test
+    fun parseDate_twoDigitYear() {
+        assertEquals(jan5At10Utc, RssFeedParser.parseDate("Fri, 05 Jan 24 10:00:00 +0000"))
+    }
+
+    @Test
+    fun parseDate_extraWhitespace() {
+        assertEquals(jan5At10Utc, RssFeedParser.parseDate("  Fri,  05 Jan 2024   10:00:00   +0000 "))
     }
 
     @Test
     fun parseDate_iso8601() {
-        val result = RssFeedParser.parseDate("2024-01-15T10:30:00+0000")
-        assert(result > 0) { "Expected a positive timestamp, got $result" }
+        assertEquals(1_705_314_600_000L, RssFeedParser.parseDate("2024-01-15T10:30:00+0000"))
+    }
+
+    @Test
+    fun parseDate_iso8601Variants() {
+        assertEquals(jan5At10Utc, RssFeedParser.parseDate("2024-01-05T10:00:00Z"))
+        assertEquals(jan5At10Utc, RssFeedParser.parseDate("2024-01-05T11:00:00+01:00"))
+        assertEquals(jan5At10Utc, RssFeedParser.parseDate("2024-01-05T10:00:00.000Z"))
+        assertEquals(jan5At10Utc, RssFeedParser.parseDate("2024-01-05T10:00:00"))
+        assertEquals(jan5At10Utc, RssFeedParser.parseDate("2024-01-05 10:00:00"))
+        assertEquals(1_704_412_800_000L, RssFeedParser.parseDate("2024-01-05"))
+    }
+
+    @Test
+    fun parseDate_invalidDayOfMonth() {
+        assertEquals(0L, RssFeedParser.parseDate("Fri, 32 Jan 2024 10:00:00 +0000"))
     }
 
     @Test
@@ -78,41 +158,109 @@ class RssFeedParserTest {
         assertEquals(0L, RssFeedParser.parseDate(""))
     }
 
-    // --- HTML stripping ---
+    // --- HTML to text ---
 
     @Test
-    fun stripHtml_basic() {
-        assertEquals("Hello world", RssFeedParser.stripHtml("<p>Hello world</p>"))
+    fun htmlToText_basic() {
+        assertEquals("Hello world", RssFeedParser.htmlToText("<p>Hello world</p>"))
     }
 
     @Test
-    fun stripHtml_nested() {
+    fun htmlToText_nested() {
         assertEquals(
             "Bold and italic",
-            RssFeedParser.stripHtml("<p><b>Bold</b> and <i>italic</i></p>")
+            RssFeedParser.htmlToText("<p><b>Bold</b> and <i>italic</i></p>")
         )
     }
 
     @Test
-    fun stripHtml_noTags() {
-        assertEquals("Plain text", RssFeedParser.stripHtml("Plain text"))
+    fun htmlToText_noTags() {
+        assertEquals("Plain text", RssFeedParser.htmlToText("Plain text"))
     }
 
     @Test
-    fun stripHtml_empty() {
-        assertEquals("", RssFeedParser.stripHtml(""))
+    fun htmlToText_plainTextKeepsLineBreaks() {
+        assertEquals("Line one\nLine two", RssFeedParser.htmlToText("Line one\nLine two"))
     }
 
     @Test
-    fun stripHtml_onlyTags() {
-        assertEquals("", RssFeedParser.stripHtml("<br/><hr/>"))
+    fun htmlToText_empty() {
+        assertEquals("", RssFeedParser.htmlToText(""))
     }
 
     @Test
-    fun stripHtml_withAttributes() {
+    fun htmlToText_onlyTags() {
+        assertEquals("", RssFeedParser.htmlToText("<br/><hr/>"))
+    }
+
+    @Test
+    fun htmlToText_paragraphsDoNotRunTogether() {
+        assertEquals("One.\n\nTwo.", RssFeedParser.htmlToText("<p>One.</p><p>Two.</p>"))
+    }
+
+    @Test
+    fun htmlToText_lineBreaks() {
+        assertEquals("One\nTwo", RssFeedParser.htmlToText("One<br>Two"))
+        assertEquals("One\nTwo", RssFeedParser.htmlToText("One<BR />Two"))
+    }
+
+    @Test
+    fun htmlToText_sourceNewlinesInsideHtmlAreSpaces() {
+        assertEquals("Hello world", RssFeedParser.htmlToText("<p>Hello\n   world</p>"))
+    }
+
+    @Test
+    fun htmlToText_listItems() {
         assertEquals(
-            "A link",
-            RssFeedParser.stripHtml("<a href=\"https://example.com\">A link</a>")
+            "Topics:\n\n• One\n• Two",
+            RssFeedParser.htmlToText("<p>Topics:</p><ul><li>One</li><li>Two</li></ul>")
+        )
+    }
+
+    @Test
+    fun htmlToText_namedEntities() {
+        assertEquals(
+            "Tom & Jerry’s “show” — part 1…",
+            RssFeedParser.htmlToText("<p>Tom &amp; Jerry&rsquo;s &ldquo;show&rdquo; &mdash; part&nbsp;1&hellip;</p>")
+        )
+    }
+
+    @Test
+    fun htmlToText_numericEntities() {
+        assertEquals("It's ’ ’", RssFeedParser.htmlToText("It&#39;s &#8217; &#x2019;"))
+    }
+
+    @Test
+    fun htmlToText_unknownEntityLeftAlone() {
+        assertEquals("a &bogus; b", RssFeedParser.htmlToText("a &bogus; b"))
+    }
+
+    @Test
+    fun htmlToText_escapedTagsStayLiteral() {
+        assertEquals("Use <b> for bold", RssFeedParser.htmlToText("<p>Use &lt;b&gt; for bold</p>"))
+    }
+
+    @Test
+    fun htmlToText_linkKeepsItsUrl() {
+        assertEquals(
+            "A link (https://example.com)",
+            RssFeedParser.htmlToText("<a href=\"https://example.com\">A link</a>")
+        )
+    }
+
+    @Test
+    fun htmlToText_linkWhoseTextIsTheUrl() {
+        assertEquals(
+            "Visit https://megaphone.fm/adchoices",
+            RssFeedParser.htmlToText("Visit <a href=\"https://megaphone.fm/adchoices\">megaphone.fm/adchoices</a>")
+        )
+    }
+
+    @Test
+    fun htmlToText_nonWebLinkDropsUrl() {
+        assertEquals(
+            "Email us",
+            RssFeedParser.htmlToText("<a href=\"mailto:hi@example.com\">Email us</a>")
         )
     }
 }

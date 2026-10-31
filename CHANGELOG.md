@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated Coroutines 1.9.0 → 1.10.2
 
 ### Fixed
+- Episode dates in many common formats (no weekday, wrong weekday, no seconds, named or `+01:00` time zones, ISO 8601 with `Z`) were dropped, so those episodes showed no date, sank to the bottom of lists and fell out of the New tab
+- Show notes: HTML entities (`&amp;`, `&rsquo;`, `&nbsp;`…) are decoded, paragraphs/line breaks/list items are kept instead of running together, and link targets are kept so they can be tapped
 - CI: lint errors (Media3 `UnstableApi` opt-in, stale transitive Fragment version) and an invalid `release.yml` (secrets used in a step `if:`)
 - Lint: String.format without Locale parameter
 - Lint: Exported service without permission

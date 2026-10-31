@@ -26,6 +26,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -47,7 +48,9 @@ import coil.compose.AsyncImage
 import com.migspod.MigsPodApp as App
 import com.migspod.data.PodcastRepository
 import com.migspod.data.SearchResult
+import com.migspod.data.looksLikeFeedUrl
 import com.migspod.data.toUserMessage
+import com.migspod.ui.components.AddFeedDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -68,6 +71,8 @@ fun SearchScreen(
     var results by rememberSaveable(stateSaver = searchResultsSaver) { mutableStateOf(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
     var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    // Non-null while the "Add by RSS URL" dialog is open (holds its prefilled text).
+    var addFeedUrl by rememberSaveable { mutableStateOf<String?>(null) }
     var subscribingUrls by remember { mutableStateOf(emptySet<String>()) }
     val scope = rememberCoroutineScope()
 
@@ -93,6 +98,11 @@ fun SearchScreen(
 
     fun doSearch() {
         if (query.isBlank()) return
+        // A pasted feed URL isn't a search term: offer to add it directly.
+        if (looksLikeFeedUrl(query)) {
+            addFeedUrl = query.trim()
+            return
+        }
         scope.launch {
             isSearching = true
             errorMessage = null
@@ -105,7 +115,12 @@ fun SearchScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(title = { Text("Search Podcasts") })
+        TopAppBar(
+            title = { Text("Search Podcasts") },
+            actions = {
+                TextButton(onClick = { addFeedUrl = "" }) { Text("Add by URL") }
+            },
+        )
 
         OutlinedTextField(
             value = query,
@@ -197,5 +212,17 @@ fun SearchScreen(
                 }
             }
         }
+    }
+
+    addFeedUrl?.let { initialUrl ->
+        AddFeedDialog(
+            repository = repository,
+            initialUrl = initialUrl,
+            onDismiss = { addFeedUrl = null },
+            onAdded = { feedUrl ->
+                addFeedUrl = null
+                onResultClick(feedUrl)
+            },
+        )
     }
 }

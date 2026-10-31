@@ -160,7 +160,7 @@ fun EpisodeDetailContent(
                     color = MaterialTheme.colorScheme.primary,
                 )
                 Text(
-                    text = "${formatTimestamp(ep.playbackPositionMs)} remaining",
+                    text = "${formatTime(ep.durationMs - ep.playbackPositionMs)} remaining",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -244,13 +244,4 @@ private fun formatDurationLong(ms: Long): String {
     val hours = totalSeconds / 3600
     val minutes = (totalSeconds % 3600) / 60
     return if (hours > 0) "${hours}h ${minutes}min" else "${minutes} min"
-}
-
-private fun formatTimestamp(ms: Long): String {
-    val totalSeconds = ms / 1000
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
-    val seconds = totalSeconds % 60
-    return if (hours > 0) String.format(Locale.ROOT, "%d:%02d:%02d", hours, minutes, seconds)
-    else String.format(Locale.ROOT, "%d:%02d", minutes, seconds)
 }

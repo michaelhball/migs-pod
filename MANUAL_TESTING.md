@@ -200,11 +200,13 @@ R8 minification can break things automated unit tests don't catch (reflection, s
 adb install -r app/build/outputs/apk/release/app-release.apk
 ```
 
-- [ ] Release build installs and launches
-- [ ] Search returns results (iTunes JSON parsing still works)
-- [ ] Subscribe + play one episode end-to-end
-- [ ] Media notification still appears (notification building uses Media3 internals — R8 sometimes strips these)
-- [ ] Force-quit then reopen → DB state intact (Room is a common R8 victim — verify `migspod.db` still reads)
+_Round 3: verified on the Pixel 8 emulator (release APK, 3.9 MB). On a phone that has the debug build, installing release needs an uninstall first (different signing key), which wipes app data._
+
+- [x] Release build installs and launches _(emulator)_
+- [x] Search returns results (iTunes JSON parsing still works) _(emulator)_
+- [x] Subscribe + play one episode end-to-end _(emulator: The Daily)_
+- [x] Media notification still appears (notification building uses Media3 internals — R8 sometimes strips these) _(emulator: foreground, category=transport, title + podcast)_
+- [x] Force-quit then reopen → DB state intact (Room is a common R8 victim — verify `migspod.db` still reads) _(emulator: library + paused episode restored)_
 - [ ] No crash for 10 minutes of regular use
 
 ## 18. Crashlytics (once Firebase project is created)

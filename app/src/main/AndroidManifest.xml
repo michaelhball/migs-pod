@@ -44,6 +44,19 @@
             </intent-filter>
         </service>
 
+        <!--
+            Lets a headphone/Bluetooth play button (or the system's media resume card)
+            restart playback after the app has been killed; Media3 routes it to the
+            session's onPlaybackResumption.
+        -->
+        <receiver
+            android:name="androidx.media3.session.MediaButtonReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>

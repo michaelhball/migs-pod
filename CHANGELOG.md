@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Headphone / Bluetooth play button (and the system's media resume card) restarts the last unfinished episode even after the app was closed or killed
 - Custom launcher icon: bunny ears over headphones, a cool-gradient sibling to the migs-music icon (replaces the default placeholder)
 - One-time prompt to exempt the app from battery optimization, so background playback survives the app being swiped from recents on aggressive OEMs
 - Release signing configuration
@@ -18,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CHANGELOG.md, README.md, TODO.md
 
 ### Changed
+- Lockscreen/notification artwork is decoded at 512px rather than full size (feed art is often 3000px, ~36 MB per play)
 - The mini-player now also shows on a podcast's page, so playback started from its ⋮ menu is visible and reachable
 - Lists no longer re-run their database query on every recomposition
 - Feed refresh sends ETag / Last-Modified, so unchanged feeds come back as a tiny 304 instead of re-downloading the whole feed every hour (DB v4)
@@ -32,6 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated Coroutines 1.9.0 → 1.10.2
 
 ### Fixed
+- Playback failures (no connection, missing audio) now show a message instead of silently doing nothing
+- Position wasn't saved after seeking while paused; the final save when the player service shut down was usually cancelled; switching episodes could drop up to 5s of the previous one's progress; a late periodic save could land after an episode was marked played
+- The player connection leaked the activity on rotation; it now follows the activity's start/stop
 - Now Playing → Episode details → Resume opened a second Now Playing on top and restarted the episode (jumping back up to 5s); double-tapping the mini-player stacked two Now Playing screens; a double back could pop the screen underneath too
 - Switching tabs lost search results and scroll positions; coming back from a podcast to Search lost the results
 - Library, New and Downloads briefly flashed their empty state while loading

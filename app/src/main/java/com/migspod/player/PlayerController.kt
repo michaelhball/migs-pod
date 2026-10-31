@@ -2,40 +2,42 @@ package com.migspod.player
 
 import android.content.ComponentName
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.drawable.BitmapDrawable
-import androidx.media3.common.MediaItem
+import androidx.core.content.edit
 import androidx.media3.common.MediaMetadata
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
-import coil.imageLoader
-import coil.request.ImageRequest
-import coil.request.SuccessResult
+import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.migspod.MigsPodApp
 import com.migspod.data.Episode
 import com.migspod.data.Podcast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import java.io.ByteArrayOutputStream
+import kotlin.coroutines.resume
 
 object PlayerController {
 
     private const val PREFS = "migspod_player"
     private const val KEY_LAST_EPISODE = "last_episode_id"
 
+    private var controllerFuture: ListenableFuture<MediaController>? = null
     private var mediaController: MediaController? = null
 
+    /**
+     * Binds to the playback service. Called from the activity's onStart and paired
+     * with [disconnect] in onStop, so the binding never outlives the visible UI.
+     */
     fun connect(context: Context) {
-        val sessionToken = SessionToken(
-            context,
-            ComponentName(context, PlaybackService::class.java)
-        )
-        val future = MediaController.Builder(context, sessionToken).buildAsync()
+        if (controllerFuture != null) return
+        val appContext = context.applicationContext
+        val sessionToken = SessionToken(appContext, ComponentName(appContext, PlaybackService::class.java))
+        val future = MediaController.Builder(appContext, sessionToken).buildAsync()
+        controllerFuture = future
         future.addListener(
             {
-                val controller = future.get()
+                val controller = runCatching { future.get() }.getOrNull() ?: return@addListener
                 mediaController = controller
                 // Cold start: nothing is loaded yet. Restore the last episode the
                 // user was listening to (paused, at its saved position) so the
@@ -50,8 +52,14 @@ object PlayerController {
         )
     }
 
+    fun disconnect() {
+        controllerFuture?.let { MediaController.releaseFuture(it) }
+        controllerFuture = null
+        mediaController = null
+    }
+
     suspend fun playEpisode(episode: Episode) {
-        val controller = mediaController ?: return
+        val controller = awaitController() ?: return
         // Already loaded (e.g. "Resume" from its own sheet): just carry on. Reloading
         // would rebuffer and jump back to the last saved position (up to 5s stale).
         if (controller.currentMediaItem?.mediaId == episode.id) {
@@ -80,6 +88,14 @@ object PlayerController {
         if (PlaybackState.currentEpisodeId.value == episodeId) {
             stop()
         }
+    }
+
+    /** Stop and unload, and forget the episode so it isn't restored on next launch. */
+    fun close() {
+        MigsPodApp.instance.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit {
+            remove(KEY_LAST_EPISODE)
+        }
+        stop()
     }
 
     fun togglePlayPause() {
@@ -118,33 +134,38 @@ object PlayerController {
         PlaybackState.currentEpisodeId.value = null
     }
 
+    /** The last episode played, if it's unfinished — what "resume" should bring back. */
+    internal suspend fun loadLastEpisode(): Pair<Episode, Podcast?>? = withContext(Dispatchers.IO) {
+        val id = MigsPodApp.instance
+            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_LAST_EPISODE, null) ?: return@withContext null
+        val db = MigsPodApp.instance.database
+        val episode = db.episodeDao().getEpisode(id) ?: return@withContext null
+        if (episode.isCompleted) return@withContext null
+        episode to db.podcastDao().getPodcast(episode.podcastFeedUrl)
+    }
+
     // --- Internal ---
 
-    private fun buildMediaItem(episode: Episode, podcast: Podcast?): MediaItem =
-        MediaItem.Builder()
-            .setMediaId(episode.id)
-            .setUri(episode.downloadPath ?: episode.audioUrl)
-            .setMediaMetadata(
-                MediaMetadata.Builder()
-                    .setTitle(episode.title)
-                    .setArtist(podcast?.title ?: "")
-                    // Artwork is attached as raw bytes by embedArtwork() after the item
-                    // loads — NOT as a URI. OEM bitmap loaders frequently fail to resolve
-                    // a remote artworkUri for the lockscreen/notification; once they report
-                    // "no art" the cards stay blank. setArtworkData is the reliable source.
-                    .build()
+    /** The connected controller, waiting for a connection still in progress. */
+    private suspend fun awaitController(): MediaController? {
+        mediaController?.let { return it }
+        val future = controllerFuture ?: return null
+        return suspendCancellableCoroutine { cont ->
+            future.addListener(
+                { cont.resume(runCatching { future.get() }.getOrNull()) },
+                MoreExecutors.directExecutor(),
             )
-            .build()
+        }
+    }
 
     /**
-     * Fetches the podcast artwork (via Coil, so it's cached/shared with the UI) and
-     * attaches the decoded bytes to the live media item's metadata, which is what the
-     * system lockscreen / notification / Quick Settings actually render.
+     * Attaches the podcast artwork to the live media item once it's loaded, which
+     * is what the system lockscreen / notification / Quick Settings actually render.
      */
     private fun embedArtwork(artworkUrl: String?, episodeId: String) {
-        val url = artworkUrl?.takeIf { it.isNotEmpty() } ?: return
         MigsPodApp.instance.appScope.launch {
-            val bytes = loadArtworkBytes(url) ?: return@launch
+            val bytes = loadArtworkBytes(artworkUrl) ?: return@launch
             withContext(Dispatchers.Main) {
                 val controller = mediaController ?: return@withContext
                 val current = controller.currentMediaItem ?: return@withContext
@@ -160,40 +181,17 @@ object PlayerController {
         }
     }
 
-    private suspend fun loadArtworkBytes(url: String): ByteArray? = withContext(Dispatchers.IO) {
-        runCatching {
-            val context = MigsPodApp.instance
-            val request = ImageRequest.Builder(context)
-                .data(url)
-                .allowHardware(false) // need a readable software bitmap to compress
-                .build()
-            val result = context.imageLoader.execute(request) as? SuccessResult
-            val bitmap = (result?.drawable as? BitmapDrawable)?.bitmap ?: return@runCatching null
-            val out = ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
-            out.toByteArray().takeIf { it.isNotEmpty() }
-        }.getOrNull()
-    }
-
     private fun saveLastEpisode(episodeId: String) {
-        MigsPodApp.instance
-            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putString(KEY_LAST_EPISODE, episodeId)
-            .apply()
+        MigsPodApp.instance.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit {
+            putString(KEY_LAST_EPISODE, episodeId)
+        }
     }
 
     private fun restoreLastEpisode() {
-        val id = MigsPodApp.instance
-            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(KEY_LAST_EPISODE, null) ?: return
-
         MigsPodApp.instance.appScope.launch {
-            val db = MigsPodApp.instance.database
-            val episode = db.episodeDao().getEpisode(id) ?: return@launch
-            // Don't resurrect a finished episode or one never actually started.
-            if (episode.isCompleted || episode.playbackPositionMs <= 0) return@launch
-            val podcast = db.podcastDao().getPodcast(episode.podcastFeedUrl)
+            val (episode, podcast) = loadLastEpisode() ?: return@launch
+            // Don't resurrect one that was never actually started.
+            if (episode.playbackPositionMs <= 0) return@launch
             withContext(Dispatchers.Main) {
                 val controller = mediaController ?: return@withContext
                 // Something may have started playing while we were loading.

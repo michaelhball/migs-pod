@@ -5,6 +5,7 @@ import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -12,6 +13,8 @@ import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.SettableFuture
 import com.migspod.MigsPodApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +23,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private const val MEDIA_NOTIFICATION_ID = 1001
+
+// One writer, in order: a periodic position save can never land after the
+// end-of-episode reset. (Plain Dispatchers.IO doesn't preserve ordering.)
+private val dbWrites = Dispatchers.IO.limitedParallelism(1)
 
 @OptIn(UnstableApi::class)
 class PlaybackService : MediaSessionService() {
@@ -75,6 +82,7 @@ class PlaybackService : MediaSessionService() {
 
         mediaSession = MediaSession.Builder(this, exoPlayer)
             .setMediaButtonPreferences(listOf(rewindButton, forwardButton))
+            .setCallback(SessionCallback())
             .build()
 
         // Save playback position periodically
@@ -93,6 +101,25 @@ class PlaybackService : MediaSessionService() {
                 PlaybackState.currentEpisodeId.value = mediaItem?.mediaId
             }
 
+            override fun onPositionDiscontinuity(
+                oldPosition: Player.PositionInfo,
+                newPosition: Player.PositionInfo,
+                reason: Int,
+            ) {
+                when (reason) {
+                    // Seeks while paused aren't covered by the periodic save.
+                    Player.DISCONTINUITY_REASON_SEEK -> saveCurrentPosition()
+                    // Switching or closing episodes: keep where the outgoing one got
+                    // to. Not at the natural end — that one was just reset and marked played.
+                    Player.DISCONTINUITY_REASON_REMOVE -> {
+                        val episodeId = oldPosition.mediaItem?.mediaId ?: return
+                        if (exoPlayer.playbackState != Player.STATE_ENDED) {
+                            savePosition(episodeId, oldPosition.positionMs)
+                        }
+                    }
+                }
+            }
+
             override fun onPlaybackStateChanged(playbackState: Int) {
                 PlaybackState.playbackState.value = playbackState
                 if (playbackState == Player.STATE_ENDED) {
@@ -105,6 +132,12 @@ class PlaybackService : MediaSessionService() {
                 }
             }
 
+            override fun onPlayerError(error: PlaybackException) {
+                // A paused restore failing (e.g. offline at launch) isn't worth a toast;
+                // tapping play retries and reports then.
+                if (!exoPlayer.playWhenReady) return
+                MigsPodApp.instance.showToast(playbackErrorMessage(error))
+            }
         })
 
         PlaybackState.player.value = exoPlayer
@@ -127,20 +160,59 @@ class PlaybackService : MediaSessionService() {
 
     private fun saveCurrentPosition() {
         val p = player ?: return
-        val episodeId = PlaybackState.currentEpisodeId.value ?: return
-        val position = p.currentPosition
-        serviceScope.launch(Dispatchers.IO) {
-            val repo = MigsPodApp.instance.database
-            repo.episodeDao().updatePlaybackPosition(episodeId, position)
+        // The player's own item rather than PlaybackState's id, which the UI flips
+        // slightly before the player actually switches episodes.
+        val episodeId = p.currentMediaItem?.mediaId ?: return
+        savePosition(episodeId, p.currentPosition)
+    }
+
+    // App scope, not the service's: the final save in onDestroy must outlive it.
+    private fun savePosition(episodeId: String, positionMs: Long) {
+        MigsPodApp.instance.appScope.launch(dbWrites) {
+            MigsPodApp.instance.database.episodeDao().updatePlaybackPosition(episodeId, positionMs)
         }
     }
 
     private fun markCurrentCompleted() {
-        val episodeId = PlaybackState.currentEpisodeId.value ?: return
-        serviceScope.launch(Dispatchers.IO) {
+        val episodeId = player?.currentMediaItem?.mediaId ?: return
+        MigsPodApp.instance.appScope.launch(dbWrites) {
             val db = MigsPodApp.instance.database
             db.episodeDao().markCompleted(episodeId, true)
             db.episodeDao().updatePlaybackPosition(episodeId, 0)
+        }
+    }
+
+    private fun playbackErrorMessage(error: PlaybackException): String = when (error.errorCode) {
+        PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+        PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT ->
+            "No connection — couldn't play this episode"
+        PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS,
+        PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND ->
+            "This episode's audio isn't available"
+        else -> "Couldn't play this episode"
+    }
+
+    private inner class SessionCallback : MediaSession.Callback {
+        // A headphone/Bluetooth "play" (or the system's resume card) after the app was
+        // killed lands here with nothing loaded: hand back the last unfinished episode
+        // at its saved position. Needs the MediaButtonReceiver in the manifest.
+        override fun onPlaybackResumption(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            isForPlayback: Boolean,
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+            val result = SettableFuture.create<MediaSession.MediaItemsWithStartPosition>()
+            serviceScope.launch {
+                val last = PlayerController.loadLastEpisode()
+                if (last == null) {
+                    result.setException(UnsupportedOperationException("Nothing to resume"))
+                    return@launch
+                }
+                val (episode, podcast) = last
+                val item = buildMediaItem(episode, podcast, loadArtworkBytes(podcast?.artworkUrl))
+                result.set(MediaSession.MediaItemsWithStartPosition(listOf(item), 0, episode.playbackPositionMs))
+            }
+            return result
         }
     }
 
@@ -166,6 +238,8 @@ class PlaybackService : MediaSessionService() {
         mediaSession = null
         player = null
         PlaybackState.player.value = null
+        // Nothing is loaded any more; let the next connection restore cleanly.
+        PlaybackState.currentEpisodeId.value = null
         super.onDestroy()
     }
 }

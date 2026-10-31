@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import com.migspod.player.PlayerController
 import com.migspod.ui.MigsPodApp
 import com.migspod.ui.theme.MigsPodTheme
 
@@ -27,6 +28,17 @@ class MainActivity : ComponentActivity() {
                 MigsPodApp()
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        PlayerController.connect(this)
+    }
+
+    override fun onStop() {
+        // Keep the connection across rotation; drop it when actually leaving.
+        if (!isChangingConfigurations) PlayerController.disconnect()
+        super.onStop()
     }
 
     private fun maybeRequestNotificationPermission() {

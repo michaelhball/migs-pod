@@ -19,14 +19,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -37,7 +34,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.migspod.MigsPodApp as App
-import com.migspod.player.PlayerController
 import com.migspod.player.PlaybackState
 import com.migspod.ui.screens.DownloadsScreen
 import com.migspod.ui.screens.EpisodeDetailSheet
@@ -94,17 +90,11 @@ private fun NavController.popIfCurrent(route: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MigsPodApp() {
-    val context = LocalContext.current
     val navController = rememberNavController()
     val repository = App.instance.repository
     val currentEpisodeId by PlaybackState.currentEpisodeId.collectAsStateWithLifecycle()
     var sheetTarget by remember { mutableStateOf<EpisodeSheetTarget?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val scope = rememberCoroutineScope()
-
-    LaunchedEffect(Unit) {
-        PlayerController.connect(context)
-    }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route

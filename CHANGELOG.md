@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-08
+
 ### Added
 - Unsubscribe asks for confirmation first (it removes the podcast's episodes, progress and downloads); unsubscribing from the podcast that's playing stops it
 - Close the mini-player: a ✕ appears next to play while paused; it puts the player away and it won't be restored on next launch (progress is kept)

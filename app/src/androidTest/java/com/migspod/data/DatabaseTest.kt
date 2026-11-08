@@ -259,4 +259,26 @@ class DatabaseTest {
         assertNull(epCleared!!.downloadPath)
     }
 
+    @Test
+    fun feedsSharingGuidsEachKeepTheirEpisodes() = runTest {
+        podcastDao.upsertPodcast(Podcast(feedUrl = "public", title = "Public"))
+        podcastDao.upsertPodcast(Podcast(feedUrl = "members", title = "Members"))
+        fun episode(feed: String, title: String) = Episode(id = "shared", podcastFeedUrl = feed, title = title)
+
+        episodeDao.saveFeedEpisodes("public", listOf(episode("public", "Free")))
+        episodeDao.saveFeedEpisodes("members", listOf(episode("members", "Paid")))
+
+        assertEquals("Free", episodeDao.getEpisodesForPodcastOnce("public").single().title)
+        val members = episodeDao.getEpisodesForPodcastOnce("members").single()
+        assertEquals("Paid", members.title)
+
+        episodeDao.updatePlaybackPosition(members.id, 5000)
+        episodeDao.saveFeedEpisodes("members", listOf(episode("members", "Paid, renamed")))
+
+        val refreshed = episodeDao.getEpisodesForPodcastOnce("members").single()
+        assertEquals(members.id, refreshed.id)
+        assertEquals("Paid, renamed", refreshed.title)
+        assertEquals(5000L, refreshed.playbackPositionMs)
+        assertEquals(0L, episodeDao.getEpisodesForPodcastOnce("public").single().playbackPositionMs)
+    }
 }

@@ -10,6 +10,9 @@ import androidx.room.Update
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
+// SQLite allows 999 bound variables on older Android versions.
+private const val MAX_IDS_PER_QUERY = 500
+
 @Dao
 interface PodcastDao {
     @Query("SELECT * FROM podcasts ORDER BY title ASC")
@@ -47,6 +50,9 @@ interface EpisodeDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertEpisodes(episodes: List<Episode>)
 
+    @Query("SELECT id FROM episodes WHERE id IN (:ids) AND podcastFeedUrl != :feedUrl")
+    suspend fun getIdsFromOtherFeeds(feedUrl: String, ids: List<String>): List<String>
+
     @Query("SELECT * FROM episodes WHERE podcastFeedUrl = :feedUrl")
     suspend fun getEpisodesForPodcastOnce(feedUrl: String): List<Episode>
 
@@ -73,8 +79,20 @@ interface EpisodeDao {
     @Transaction
     suspend fun saveFeedEpisodes(feedUrl: String, episodes: List<Episode>) {
         val existing = getEpisodesForPodcastOnce(feedUrl).associateBy { it.id }
-        insertEpisodes(episodes.filter { it.id !in existing })
-        for (episode in episodes) {
+        // An episode's id is its feed GUID, and two feeds of one show can share GUIDs
+        // (a public feed and a members-only feed). The second feed stores those episodes
+        // under an id scoped to it, so both feeds list them.
+        val takenByOtherFeeds = episodes.map { it.id }
+            .filter { it !in existing }
+            .chunked(MAX_IDS_PER_QUERY)
+            .flatMap { getIdsFromOtherFeeds(feedUrl, it) }
+            .toSet()
+        val resolved = episodes.map { episode ->
+            val scopedId = "$feedUrl#${episode.id}"
+            if (episode.id in takenByOtherFeeds || scopedId in existing) episode.copy(id = scopedId) else episode
+        }
+        insertEpisodes(resolved.filter { it.id !in existing })
+        for (episode in resolved) {
             val old = existing[episode.id] ?: continue
             val changed = old.title != episode.title ||
                 old.description != episode.description ||

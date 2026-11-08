@@ -136,6 +136,8 @@ class PlaybackService : MediaSessionService() {
                 // tapping play retries and reports then.
                 if (!exoPlayer.playWhenReady) return
                 MigsPodApp.instance.showToast(playbackErrorMessage(error))
+                // The buttons follow playWhenReady, so this shows Play, which retries.
+                exoPlayer.pause()
             }
         })
 

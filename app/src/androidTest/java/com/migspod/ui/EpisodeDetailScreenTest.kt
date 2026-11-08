@@ -71,6 +71,30 @@ class EpisodeDetailScreenTest {
     }
 
     @Test
+    fun hidesTimeRemainingWhenPositionIsPastTheFeedLength() = runTest {
+        db.podcastDao().upsertPodcast(Podcast(feedUrl = "feed-1", title = "Science Show", author = "Dr. Smith"))
+        db.episodeDao().insertEpisodes(listOf(
+            Episode(
+                id = "ep-long",
+                podcastFeedUrl = "feed-1",
+                title = "Longer Than Stated",
+                durationMs = 60_000,
+                playbackPositionMs = 90_000,
+            )
+        ))
+        composeTestRule.setContent {
+            MigsPodTheme {
+                EpisodeDetailContent(episodeId = "ep-long", repository = repository, onNowPlaying = {})
+            }
+        }
+
+        composeTestRule.waitUntil(5000) {
+            composeTestRule.onAllNodesWithText("Longer Than Stated").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText("remaining", substring = true).assertDoesNotExist()
+    }
+
+    @Test
     fun showsEpisodeTitleAndDescription() = runTest {
         db.podcastDao().upsertPodcast(
             Podcast(feedUrl = "feed-1", title = "Science Show", author = "Dr. Smith")

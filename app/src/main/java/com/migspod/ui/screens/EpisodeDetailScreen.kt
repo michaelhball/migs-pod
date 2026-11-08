@@ -159,11 +159,14 @@ fun EpisodeDetailContent(
                     modifier = Modifier.fillMaxWidth().height(4.dp),
                     color = MaterialTheme.colorScheme.primary,
                 )
-                Text(
-                    text = "${formatTime(ep.durationMs - ep.playbackPositionMs)} remaining",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                // Inserted ads can make the audio longer than the length the feed states.
+                if (ep.playbackPositionMs < ep.durationMs) {
+                    Text(
+                        text = "${formatTime(ep.durationMs - ep.playbackPositionMs)} remaining",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
             Spacer(Modifier.height(16.dp))

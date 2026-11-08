@@ -108,7 +108,7 @@ fun SearchScreen(
             errorMessage = null
             repository.searchPodcasts(query).fold(
                 onSuccess = { results = it },
-                onFailure = { errorMessage = it.message }
+                onFailure = { errorMessage = it.toUserMessage() }
             )
             isSearching = false
         }

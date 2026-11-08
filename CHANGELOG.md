@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated Coroutines 1.9.0 → 1.10.2
 
 ### Fixed
+- A failed search shows a plain reason such as "No internet connection", not the raw technical error
 - A second feed of the same show (for example a members-only feed next to the public one) lists its episodes; those sharing an id with the first feed no longer go missing
 - The episode sheet no longer says "0:00 remaining" when inserted ads make the audio longer than the feed states
 - An episode that fails to load shows a Play button that retries, not a Pause button with nothing playing

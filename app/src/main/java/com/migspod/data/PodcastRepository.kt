@@ -232,8 +232,10 @@ class PodcastRepository(
                 java.net.URLEncoder.encode(query, "UTF-8")
             }&media=podcast&limit=25"
             val request = Request.Builder().url(url).build()
-            val response = client.newCall(request).execute()
-            val body = response.use { it.body?.string() } ?: return@withContext Result.success(emptyList())
+            val body = client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) throw IOException("Search isn't available right now")
+                response.body?.string()
+            } ?: return@withContext Result.success(emptyList())
             val json = JSONObject(body)
             val results = json.getJSONArray("results")
             val searchResults = mutableListOf<SearchResult>()

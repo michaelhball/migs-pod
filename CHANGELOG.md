@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated Coroutines 1.9.0 → 1.10.2
 
 ### Fixed
+- Tapping the media card in the notification shade or on the lock screen opens the app
 - Now Playing keeps its seek bar and buttons on screen when the phone is turned sideways
 - A failed search shows a plain reason such as "No internet connection", not the raw technical error
 - A second feed of the same show (for example a members-only feed next to the public one) lists its episodes; those sharing an id with the first feed no longer go missing

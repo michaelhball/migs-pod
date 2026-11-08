@@ -1,5 +1,6 @@
 package com.migspod.player
 
+import android.app.PendingIntent
 import android.content.Intent
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
@@ -15,6 +16,7 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
+import com.migspod.MainActivity
 import com.migspod.MigsPodApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -80,7 +82,16 @@ class PlaybackService : MediaSessionService() {
             .setDisplayName("Fast-forward 30 seconds")
             .build()
 
+        // Opens the app when the media card in the shade or on the lock screen is tapped.
+        val openApp = PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_IMMUTABLE,
+        )
+
         mediaSession = MediaSession.Builder(this, exoPlayer)
+            .setSessionActivity(openApp)
             .setMediaButtonPreferences(listOf(rewindButton, forwardButton))
             .setCallback(SessionCallback())
             .build()

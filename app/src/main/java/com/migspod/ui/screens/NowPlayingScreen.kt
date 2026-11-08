@@ -178,6 +178,8 @@ fun NowPlayingScreen(
                     model = artworkUrl,
                     contentDescription = null,
                     modifier = Modifier
+                        // Gives up height first, so the controls stay on screen in landscape.
+                        .weight(1f, fill = false)
                         .fillMaxWidth(0.8f)
                         .aspectRatio(1f)
                         .shadow(12.dp, RoundedCornerShape(20.dp))

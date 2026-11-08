@@ -49,8 +49,31 @@ import com.migspod.data.PodcastRepository
 import com.migspod.ui.startDownload
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
+
+internal enum class EpisodeAge(val label: String) {
+    TODAY("Today"),
+    THIS_WEEK("This Week"),
+    EARLIER("Earlier"),
+}
+
+/** "This Week" is the six days before today, so it isn't nearly empty on a Monday. */
+internal fun episodeAge(
+    publishedMs: Long,
+    nowMs: Long = System.currentTimeMillis(),
+    zone: ZoneId = ZoneId.systemDefault(),
+): EpisodeAge {
+    val today = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()
+    val published = Instant.ofEpochMilli(publishedMs).atZone(zone).toLocalDate()
+    return when {
+        !published.isBefore(today) -> EpisodeAge.TODAY
+        published.isAfter(today.minusDays(7)) -> EpisodeAge.THIS_WEEK
+        else -> EpisodeAge.EARLIER
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,6 +83,7 @@ fun NewEpisodesScreen(
 ) {
     val episodesOrNull by remember { repository.getRecentEpisodes() }.collectAsStateWithLifecycle(null)
     val episodes = episodesOrNull.orEmpty()
+    val sections = remember(episodes) { episodes.groupBy { episodeAge(it.publishedDate) } }
     var isRefreshing by remember { mutableStateOf(false) }
     val downloadingIds by repository.downloadingIds.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -112,16 +136,26 @@ fun NewEpisodesScreen(
                 modifier = Modifier.fillMaxSize(),
             ) {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(episodes, key = { it.id }, contentType = { "episode" }) { episode ->
-                        val podcast = podcastCache[episode.podcastFeedUrl]
-                        NewEpisodeRow(
-                            episode = episode,
-                            podcastTitle = podcast?.title ?: "",
-                            podcastArtworkUrl = podcast?.artworkUrl ?: "",
-                            isDownloading = episode.id in downloadingIds,
-                            onClick = { onEpisodeClick(episode.id) },
-                            onDownload = { startDownload(repository, episode.id) },
-                        )
+                    sections.forEach { (age, sectionEpisodes) ->
+                        item(key = age.name, contentType = "header") {
+                            Text(
+                                text = age.label,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
+                            )
+                        }
+                        items(sectionEpisodes, key = { it.id }, contentType = { "episode" }) { episode ->
+                            val podcast = podcastCache[episode.podcastFeedUrl]
+                            NewEpisodeRow(
+                                episode = episode,
+                                podcastTitle = podcast?.title ?: "",
+                                podcastArtworkUrl = podcast?.artworkUrl ?: "",
+                                isDownloading = episode.id in downloadingIds,
+                                onClick = { onEpisodeClick(episode.id) },
+                                onDownload = { startDownload(repository, episode.id) },
+                            )
+                        }
                     }
                 }
             }

@@ -123,7 +123,7 @@ class PodcastRepository(
 
     // --- New episodes feed ---
 
-    fun getRecentEpisodes(limit: Int = 100): Flow<List<Episode>> =
+    fun getRecentEpisodes(limit: Int = 500): Flow<List<Episode>> =
         episodeDao.getRecentEpisodes(limit)
 
     suspend fun refreshAllPodcasts(): Result<Unit> = withContext(Dispatchers.IO) {

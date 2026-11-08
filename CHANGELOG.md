@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CHANGELOG.md, README.md, TODO.md
 
 ### Changed
+- New tab groups episodes under Today, This Week and Earlier, and lists up to 500 episodes
 - Library tiles are smaller, four across on a typical phone
 - Tabs run Search, New, Downloads, Library from left to right
 - App icon background is a midnight blue to violet gradient

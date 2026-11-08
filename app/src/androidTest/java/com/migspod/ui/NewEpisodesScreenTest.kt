@@ -105,4 +105,27 @@ class NewEpisodesScreenTest {
         }
         composeTestRule.onNodeWithText("My Favorite Show").assertIsDisplayed()
     }
+
+    @Test
+    fun groupsEpisodesUnderTodayThisWeekAndEarlier() = runTest {
+        val day = 86_400_000L
+        val now = System.currentTimeMillis()
+        db.podcastDao().upsertPodcast(Podcast(feedUrl = "f", title = "Show"))
+        db.episodeDao().insertEpisodes(listOf(
+            Episode(id = "t", podcastFeedUrl = "f", title = "Fresh", publishedDate = now),
+            Episode(id = "w", podcastFeedUrl = "f", title = "Recent", publishedDate = now - 3 * day),
+            Episode(id = "e", podcastFeedUrl = "f", title = "Old", publishedDate = now - 30 * day),
+        ))
+        composeTestRule.setContent {
+            MigsPodTheme {
+                NewEpisodesScreen(repository = repository, onEpisodeClick = {})
+            }
+        }
+
+        composeTestRule.waitUntil(5000) {
+            composeTestRule.onAllNodesWithText("Today").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText("This Week").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Earlier").assertIsDisplayed()
+    }
 }

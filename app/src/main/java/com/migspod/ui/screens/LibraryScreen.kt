@@ -5,11 +5,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -68,15 +68,15 @@ fun LibraryScreen(
             }
         } else {
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 110.dp),
+                columns = GridCells.Adaptive(minSize = 84.dp),
                 contentPadding = PaddingValues(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(loaded, key = { it.feedUrl }, contentType = { "podcast" }) { podcast ->
                     Column(
                         modifier = Modifier
-                            .width(110.dp)
+                            .fillMaxWidth()
                             .clickable { onPodcastClick(podcast.feedUrl) },
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
@@ -84,7 +84,8 @@ fun LibraryScreen(
                             model = podcast.artworkUrl,
                             contentDescription = podcast.title,
                             modifier = Modifier
-                                .size(110.dp)
+                                .fillMaxWidth()
+                                .aspectRatio(1f)
                                 .clip(RoundedCornerShape(12.dp)),
                             contentScale = ContentScale.Crop,
                         )

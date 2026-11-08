@@ -228,6 +228,10 @@ fun EpisodeDetailContent(
                 )
             }
         }
+    } else {
+        // The sheet stays at the height it measures when it opens if system animations
+        // are off, so it needs its full height before the episode has loaded.
+        Spacer(Modifier.fillMaxSize())
     }
 }
 

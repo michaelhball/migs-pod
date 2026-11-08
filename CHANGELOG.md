@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CHANGELOG.md, README.md, TODO.md
 
 ### Changed
+- App icon background is a midnight blue to violet gradient
 - Lockscreen/notification artwork is decoded at 512px rather than full size (feed art is often 3000px, ~36 MB per play)
 - The mini-player now also shows on a podcast's page, so playback started from its ⋮ menu is visible and reachable
 - Lists no longer re-run their database query on every recomposition

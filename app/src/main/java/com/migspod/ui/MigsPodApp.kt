@@ -124,12 +124,6 @@ fun MigsPodApp() {
                             onClick = { navController.navigateToTab(Screen.Search.route) }
                         )
                         NavigationBarItem(
-                            icon = { Icon(Icons.Default.Home, contentDescription = "Library") },
-                            label = { Text("Library") },
-                            selected = currentRoute == Screen.Library.route,
-                            onClick = { navController.navigateToTab(Screen.Library.route) }
-                        )
-                        NavigationBarItem(
                             icon = { Icon(Icons.Default.RssFeed, contentDescription = "New") },
                             label = { Text("New") },
                             selected = currentRoute == Screen.NewEpisodes.route,
@@ -140,6 +134,12 @@ fun MigsPodApp() {
                             label = { Text("Downloads") },
                             selected = currentRoute == Screen.Downloads.route,
                             onClick = { navController.navigateToTab(Screen.Downloads.route) }
+                        )
+                        NavigationBarItem(
+                            icon = { Icon(Icons.Default.Home, contentDescription = "Library") },
+                            label = { Text("Library") },
+                            selected = currentRoute == Screen.Library.route,
+                            onClick = { navController.navigateToTab(Screen.Library.route) }
                         )
                     }
                 }

@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The player's media id is a hash of the episode id, so a private feed URL or tokenised audio URL inside an episode id is not readable by other apps through the media session
 - The release APK is 26% smaller (3.87 MB to 2.85 MB): R8 shrinks Media3 and the data classes, and only English resources are packaged
 - Media3 (the player library) is updated from 1.9.2 to 1.11.1, which fixes crashes in its notification and foreground-service handling
+- A feed larger than 50 MB and a download larger than 2 GB are refused, so a faulty or hostile server cannot fill the phone's memory or storage
 
 ### Fixed
 - Every screen's top bar sits directly under the status bar; the status bar height was being added twice, which left an empty band above each title

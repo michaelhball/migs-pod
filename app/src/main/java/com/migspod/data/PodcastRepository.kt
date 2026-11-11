@@ -19,7 +19,9 @@ import okhttp3.Request
 import org.json.JSONObject
 import org.xmlpull.v1.XmlPullParserException
 import java.io.File
+import java.io.FilterInputStream
 import java.io.IOException
+import java.io.InputStream
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -29,6 +31,8 @@ class PodcastRepository(
     private val podcastDao: PodcastDao,
     private val episodeDao: EpisodeDao,
     private val downloadsDir: File,
+    private val maxFeedBytes: Long = 50L * 1024 * 1024,
+    private val maxDownloadBytes: Long = 2L * 1024 * 1024 * 1024,
 ) {
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -177,7 +181,8 @@ class PodcastRepository(
                 // e.g. a Wi-Fi captive portal answering with its login page
                 if (body.contentType()?.type == "text") throw IOException("Server didn't return audio")
                 partFile.outputStream().use { output ->
-                    body.byteStream().use { input -> input.copyTo(output) }
+                    CappedInputStream(body.byteStream(), maxDownloadBytes, "This episode is too large to download")
+                        .use { input -> input.copyTo(output) }
                 }
             }
             if (!partFile.renameTo(destFile)) throw IOException("Couldn't save the download")
@@ -283,7 +288,8 @@ class PodcastRepository(
             if (resp.code == 304) return null
             if (!resp.isSuccessful) throw IOException("Server returned HTTP ${resp.code}")
             val body = resp.body ?: throw IOException("Empty response from feed")
-            val feed = body.byteStream().use { RssFeedParser.parse(it) }
+            val feed = CappedInputStream(body.byteStream(), maxFeedBytes, "This feed is too large")
+                .use { RssFeedParser.parse(it) }
             if (feed.title.isBlank() && feed.episodes.isEmpty()) throw IOException(NOT_A_FEED)
             return FetchedFeed(feed, resp.header("ETag"), resp.header("Last-Modified"))
         }
@@ -299,6 +305,29 @@ class PodcastRepository(
             publishedDate = ep.publishedDate,
             durationMs = ep.durationMs,
         )
+    }
+}
+
+/**
+ * Fails the read once more than [limit] bytes have come through. A feed or an audio
+ * link is someone else's server (or, over http, anyone on the network): without a
+ * limit it can fill the phone's memory or storage.
+ */
+private class CappedInputStream(
+    input: InputStream,
+    private val limit: Long,
+    private val message: String,
+) : FilterInputStream(input) {
+    private var count = 0L
+
+    override fun read(): Int = super.read().also { if (it >= 0) counted(1) }
+
+    override fun read(b: ByteArray, off: Int, len: Int): Int =
+        super.read(b, off, len).also { if (it > 0) counted(it) }
+
+    private fun counted(bytes: Int) {
+        count += bytes
+        if (count > limit) throw IOException(message)
     }
 }
 

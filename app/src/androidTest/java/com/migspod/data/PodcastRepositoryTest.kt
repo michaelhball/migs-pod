@@ -104,6 +104,19 @@ class PodcastRepositoryTest {
     }
 
     @Test
+    fun subscribeRejectsAFeedAboveTheSizeLimit() = runTest {
+        val small = PodcastRepository(db.podcastDao(), db.episodeDao(), downloadsDir, maxFeedBytes = 2_000)
+        val episodes = (1..100).map { Triple("ep-$it", "Episode $it", "https://example.com/$it.mp3") }
+        server.enqueue(MockResponse().setBody(feedXml("Endless", episodes)))
+        val feedUrl = server.url("/feed.xml").toString()
+
+        val result = small.subscribeToPodcast(feedUrl)
+
+        assertEquals("This feed is too large", result.exceptionOrNull()?.toUserMessage())
+        assertNull(db.podcastDao().getPodcast(feedUrl))
+    }
+
+    @Test
     fun subscribeRejectsAWebPage() = runTest {
         server.enqueue(MockResponse().setBody("<html><head><title>Hi</title></head><body>Not a feed</body></html>"))
         val feedUrl = server.url("/page").toString()
@@ -350,6 +363,19 @@ class PodcastRepositoryTest {
         assertNull(db.episodeDao().getEpisode("ep-d")!!.downloadPath)
         assertTrue(downloadsDir.list().isNullOrEmpty())
         assertTrue(repository.downloadingIds.value.isEmpty())
+    }
+
+    @Test
+    fun downloadAboveTheSizeLimitFailsAndLeavesNothingBehind() = runTest {
+        subscribeWithEpisode("/endless.mp3")
+        val small = PodcastRepository(db.podcastDao(), db.episodeDao(), downloadsDir, maxDownloadBytes = 10)
+        server.enqueue(audioResponse("more-than-ten-bytes-of-audio"))
+
+        val result = small.downloadEpisode("ep-d")
+
+        assertEquals("This episode is too large to download", result.exceptionOrNull()?.toUserMessage())
+        assertNull(db.episodeDao().getEpisode("ep-d")!!.downloadPath)
+        assertTrue(downloadsDir.list().isNullOrEmpty())
     }
 
     @Test

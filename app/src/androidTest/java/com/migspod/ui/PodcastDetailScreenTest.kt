@@ -140,7 +140,9 @@ class PodcastDetailScreenTest {
             }
         }
 
-        composeTestRule.waitForIdle()
+        composeTestRule.waitUntil(timeoutMillis = 5000) {
+            composeTestRule.onAllNodesWithText("In Progress Episode").fetchSemanticsNodes().isNotEmpty()
+        }
         composeTestRule.onNodeWithText("In Progress Episode").assertIsDisplayed()
     }
 

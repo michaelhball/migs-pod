@@ -117,7 +117,9 @@ class DownloadsScreenTest {
             }
         }
 
-        composeTestRule.waitForIdle()
+        composeTestRule.waitUntil(timeoutMillis = 5000) {
+            composeTestRule.onAllNodesWithText("Downloaded Ep").fetchSemanticsNodes().isNotEmpty()
+        }
         composeTestRule.onNodeWithText("Downloaded Ep").assertIsDisplayed()
         composeTestRule.onNodeWithText("Not Downloaded Ep").assertDoesNotExist()
     }
@@ -235,7 +237,9 @@ class DownloadsScreenTest {
             }
         }
 
-        composeTestRule.waitForIdle()
+        composeTestRule.waitUntil(timeoutMillis = 5000) {
+            composeTestRule.onAllNodesWithText("Ep One").fetchSemanticsNodes().isNotEmpty()
+        }
         composeTestRule.onNodeWithContentDescription("Delete download").assertIsDisplayed()
     }
 }

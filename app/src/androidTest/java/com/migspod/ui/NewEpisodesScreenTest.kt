@@ -77,7 +77,9 @@ class NewEpisodesScreenTest {
             }
         }
 
-        composeTestRule.waitForIdle()
+        composeTestRule.waitUntil(timeoutMillis = 5000) {
+            composeTestRule.onAllNodesWithText("Alpha Episode One").fetchSemanticsNodes().isNotEmpty()
+        }
         composeTestRule.onNodeWithText("Alpha Episode One").assertIsDisplayed()
         composeTestRule.onNodeWithText("Beta Episode One").assertIsDisplayed()
     }

@@ -295,4 +295,20 @@ class DatabaseTest {
 
         assertEquals("Episode", episodeDao.getEpisodesForPodcastOnce("feed").single().title)
     }
+
+    @Test
+    fun listQueriesLeaveOutShowNotes() = runTest {
+        podcastDao.upsertPodcast(Podcast(feedUrl = "feed", title = "Feed"))
+        episodeDao.insertEpisodes(listOf(
+            Episode(id = "ep", podcastFeedUrl = "feed", title = "Episode", description = "Long show notes",
+                publishedDate = 1000, playbackPositionMs = 42, downloadPath = "/fake/ep.mp3"),
+        ))
+        val inLists = Episode(id = "ep", podcastFeedUrl = "feed", title = "Episode", description = "",
+            publishedDate = 1000, playbackPositionMs = 42, downloadPath = "/fake/ep.mp3")
+
+        assertEquals(listOf(inLists), episodeDao.getEpisodesForPodcast("feed").first())
+        assertEquals(listOf(inLists), episodeDao.getRecentEpisodes(10).first())
+        assertEquals(listOf(inLists), episodeDao.getDownloadedEpisodes().first())
+        assertEquals("Long show notes", episodeDao.getEpisode("ep")!!.description)
+    }
 }

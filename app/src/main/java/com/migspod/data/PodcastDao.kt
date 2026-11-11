@@ -13,6 +13,13 @@ import kotlinx.coroutines.flow.Flow
 // SQLite allows 999 bound variables on older Android versions.
 private const val MAX_IDS_PER_QUERY = 500
 
+// Episode rows for the list screens, with the show notes left out: no list shows
+// them, they are most of a row's bytes, and every saved playback position makes
+// each open list read its rows again.
+private const val LIST_COLUMNS =
+    "id, podcastFeedUrl, title, '' AS description, audioUrl, publishedDate, durationMs, " +
+        "playbackPositionMs, isCompleted, downloadPath"
+
 @Dao
 interface PodcastDao {
     @Query("SELECT * FROM podcasts ORDER BY title ASC")
@@ -38,7 +45,7 @@ interface PodcastDao {
 
 @Dao
 interface EpisodeDao {
-    @Query("SELECT * FROM episodes WHERE podcastFeedUrl = :feedUrl ORDER BY publishedDate DESC")
+    @Query("SELECT $LIST_COLUMNS FROM episodes WHERE podcastFeedUrl = :feedUrl ORDER BY publishedDate DESC")
     fun getEpisodesForPodcast(feedUrl: String): Flow<List<Episode>>
 
     @Query("SELECT * FROM episodes WHERE id = :id")
@@ -125,14 +132,9 @@ interface EpisodeDao {
     @Query("SELECT * FROM episodes WHERE downloadPath IS NOT NULL")
     suspend fun getDownloadedEpisodesOnce(): List<Episode>
 
-    @Query("""
-        SELECT e.* FROM episodes e
-        INNER JOIN podcasts p ON e.podcastFeedUrl = p.feedUrl
-        ORDER BY e.publishedDate DESC
-        LIMIT :limit
-    """)
-    fun getRecentEpisodes(limit: Int = 100): Flow<List<Episode>>
+    @Query("SELECT $LIST_COLUMNS FROM episodes ORDER BY publishedDate DESC LIMIT :limit")
+    fun getRecentEpisodes(limit: Int): Flow<List<Episode>>
 
-    @Query("SELECT * FROM episodes WHERE downloadPath IS NOT NULL ORDER BY publishedDate DESC")
+    @Query("SELECT $LIST_COLUMNS FROM episodes WHERE downloadPath IS NOT NULL ORDER BY publishedDate DESC")
     fun getDownloadedEpisodes(): Flow<List<Episode>>
 }

@@ -8,8 +8,10 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.RecordedRequest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -251,6 +253,28 @@ class PodcastRepositoryTest {
         val result = repository.searchPodcasts("zzzzzzzzzz-unlikely-query-xyz")
         // Whether network is available or not, the call should not throw.
         assertTrue(result.isSuccess || result.isFailure)
+    }
+
+    @Test
+    fun refreshAllFailsOnlyWhenEveryFeedFails() = runTest {
+        val episode = listOf(Triple("ep-1", "Episode", "https://example.com/1.mp3"))
+        server.enqueue(MockResponse().setBody(feedXml("Up", episode)))
+        server.enqueue(MockResponse().setBody(feedXml("Down", episode.map { it.copy(first = "ep-2") })))
+        repository.subscribeToPodcast(server.url("/up.xml").toString()).getOrThrow()
+        repository.subscribeToPodcast(server.url("/down.xml").toString()).getOrThrow()
+
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest) =
+                if (request.path == "/up.xml") MockResponse().setBody(feedXml("Up", episode))
+                else MockResponse().setResponseCode(503)
+        }
+        assertTrue(repository.refreshAllPodcasts().isSuccess)
+
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest) = MockResponse().setResponseCode(503)
+        }
+        val allDown = repository.refreshAllPodcasts()
+        assertEquals("Server returned HTTP 503", allDown.exceptionOrNull()?.message)
     }
 
     @Test

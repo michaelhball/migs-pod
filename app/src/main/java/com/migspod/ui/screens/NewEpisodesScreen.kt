@@ -43,9 +43,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.migspod.MigsPodApp as App
 import com.migspod.data.Episode
 import com.migspod.data.Podcast
 import com.migspod.data.PodcastRepository
+import com.migspod.data.toUserMessage
 import com.migspod.ui.formatDay
 import com.migspod.ui.formatDuration
 import com.migspod.ui.startDownload
@@ -128,7 +130,9 @@ fun NewEpisodesScreen(
                 onRefresh = {
                     scope.launch {
                         isRefreshing = true
-                        repository.refreshAllPodcasts()
+                        repository.refreshAllPodcasts().onFailure {
+                            App.instance.showToast("Couldn't refresh: ${it.toUserMessage()}")
+                        }
                         isRefreshing = false
                     }
                 },

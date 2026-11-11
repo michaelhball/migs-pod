@@ -3,13 +3,13 @@ package com.migspod.data
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
@@ -132,18 +132,19 @@ class PodcastRepository(
     fun getRecentEpisodes(limit: Int = 500): Flow<List<Episode>> =
         episodeDao.getRecentEpisodes(limit)
 
+    /**
+     * Refreshes every subscription. Fails only when every feed failed, which means the
+     * connection is down; one unreachable feed among working ones is not reported.
+     */
     suspend fun refreshAllPodcasts(): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            val podcasts = podcastDao.getAllPodcasts().first()
-            supervisorScope {
-                podcasts.map { podcast ->
-                    async { refreshSlots.withPermit { refreshPodcast(podcast.feedUrl) } }
-                }.awaitAll()
-            }
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        val podcasts = podcastDao.getAllPodcasts().first()
+        val failures = coroutineScope {
+            podcasts.map { podcast ->
+                async { refreshSlots.withPermit { refreshPodcast(podcast.feedUrl) } }
+            }.awaitAll()
+        }.mapNotNull { it.exceptionOrNull() }
+        if (podcasts.isNotEmpty() && failures.size == podcasts.size) Result.failure(failures.first())
+        else Result.success(Unit)
     }
 
     // --- Downloads ---

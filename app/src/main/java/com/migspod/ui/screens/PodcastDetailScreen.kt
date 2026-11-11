@@ -49,6 +49,7 @@ import com.migspod.MigsPodApp as App
 import com.migspod.data.Episode
 import com.migspod.data.Podcast
 import com.migspod.data.PodcastRepository
+import com.migspod.data.toUserMessage
 import com.migspod.player.PlaybackState
 import com.migspod.player.PlayerController
 import com.migspod.ui.components.LinkifiedText
@@ -94,7 +95,9 @@ fun PodcastDetailScreen(
     fun doRefresh() {
         scope.launch {
             isRefreshing = true
-            repository.refreshPodcast(feedUrl)
+            repository.refreshPodcast(feedUrl).onFailure {
+                App.instance.showToast("Couldn't refresh: ${it.toUserMessage()}")
+            }
             podcast = withContext(Dispatchers.IO) { repository.getPodcast(feedUrl) }
             isRefreshing = false
         }

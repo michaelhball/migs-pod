@@ -53,15 +53,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.Player
 import coil.compose.AsyncImage
 import com.migspod.data.Episode
 import com.migspod.data.PodcastRepository
 import com.migspod.player.PlaybackState
 import com.migspod.player.PlayerController
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
+import com.migspod.ui.components.PollPlayer
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -83,40 +82,22 @@ fun NowPlayingScreen(
     var episode by remember { mutableStateOf<Episode?>(null) }
     var podcastTitle by remember { mutableStateOf("") }
     var artworkUrl by remember { mutableStateOf("") }
-    var currentPosition by remember { mutableLongStateOf(0L) }
-    var duration by remember { mutableLongStateOf(0L) }
     var isPlaying by remember { mutableStateOf(false) }
-    var isSeeking by remember { mutableStateOf(false) }
-    var seekPosition by remember { mutableFloatStateOf(0f) }
 
     LaunchedEffect(currentEpisodeId) {
         val epId = currentEpisodeId ?: return@LaunchedEffect
-        withContext(Dispatchers.IO) {
-            episode = repository.getEpisode(epId)
-            episode?.let { ep ->
-                val podcast = repository.getPodcast(ep.podcastFeedUrl)
-                podcastTitle = podcast?.title ?: ""
-                artworkUrl = podcast?.artworkUrl ?: ""
-            }
+        val ep = repository.getEpisode(epId)
+        episode = ep
+        if (ep != null) {
+            val podcast = repository.getPodcast(ep.podcastFeedUrl)
+            podcastTitle = podcast?.title ?: ""
+            artworkUrl = podcast?.artworkUrl ?: ""
         }
     }
 
-    // Poll player state. isPlaying tracks playWhenReady (intent) rather than
-    // isPlaying (actual) so the play/pause icon doesn't flip while a seek
-    // re-buffers.
-    LaunchedEffect(player) {
-        while (true) {
-            val p = player
-            if (p != null) {
-                if (!isSeeking) {
-                    currentPosition = p.currentPosition
-                }
-                duration = p.duration.coerceAtLeast(0)
-                isPlaying = p.playWhenReady
-            }
-            delay(250)
-        }
-    }
+    // isPlaying tracks playWhenReady (intent) rather than isPlaying (actual) so the
+    // play/pause icon doesn't flip while a seek re-buffers.
+    PollPlayer(player, intervalMs = 250) { isPlaying = it.playWhenReady }
 
     // Swipe-down-to-dismiss, Castbox-style.
     val scope = rememberCoroutineScope()
@@ -210,49 +191,7 @@ fun NowPlayingScreen(
 
                 Spacer(Modifier.height(28.dp))
 
-                // Seek bar
-                val sliderValue = if (isSeeking) seekPosition
-                else if (duration > 0) currentPosition.toFloat() / duration.toFloat()
-                else 0f
-
-                Slider(
-                    value = sliderValue,
-                    onValueChange = {
-                        isSeeking = true
-                        seekPosition = it
-                    },
-                    onValueChangeFinished = {
-                        val seekMs = (seekPosition * duration).toLong()
-                        PlayerController.seekTo(seekMs)
-                        currentPosition = seekMs
-                        isSeeking = false
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = SliderDefaults.colors(
-                        thumbColor = MaterialTheme.colorScheme.primary,
-                        activeTrackColor = MaterialTheme.colorScheme.primary,
-                        inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    ),
-                )
-
-                // Time labels
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(
-                        text = formatTime(
-                            if (isSeeking) (seekPosition * duration).toLong() else currentPosition
-                        ),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text = formatTime(duration),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                SeekBar(player)
 
                 Spacer(Modifier.height(16.dp))
 
@@ -306,6 +245,62 @@ fun NowPlayingScreen(
                 Spacer(Modifier.height(24.dp))
             }
         }
+    }
+}
+
+/** The seek slider with the elapsed and total time under it. */
+@Composable
+private fun SeekBar(player: Player?) {
+    var currentPosition by remember { mutableLongStateOf(0L) }
+    var duration by remember { mutableLongStateOf(0L) }
+    var isSeeking by remember { mutableStateOf(false) }
+    var seekPosition by remember { mutableFloatStateOf(0f) }
+
+    PollPlayer(player, intervalMs = 250) { p ->
+        if (!isSeeking) currentPosition = p.currentPosition
+        duration = p.duration.coerceAtLeast(0)
+    }
+
+    Slider(
+        value = when {
+            isSeeking -> seekPosition
+            duration > 0 -> currentPosition.toFloat() / duration.toFloat()
+            else -> 0f
+        },
+        onValueChange = {
+            isSeeking = true
+            seekPosition = it
+        },
+        onValueChangeFinished = {
+            val seekMs = (seekPosition * duration).toLong()
+            PlayerController.seekTo(seekMs)
+            currentPosition = seekMs
+            isSeeking = false
+        },
+        // With the length still unknown, any drag would seek to 0:00.
+        enabled = duration > 0,
+        modifier = Modifier.fillMaxWidth(),
+        colors = SliderDefaults.colors(
+            thumbColor = MaterialTheme.colorScheme.primary,
+            activeTrackColor = MaterialTheme.colorScheme.primary,
+            inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+    )
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = formatTime(if (isSeeking) (seekPosition * duration).toLong() else currentPosition),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = formatTime(duration),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

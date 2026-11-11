@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The feed parser accepts only http and https addresses for audio and artwork, ignores entities declared inside a feed, and caps a description at 500,000 characters
 - Feed refresh runs at most 8 feeds at a time, gives up on a feed after 2 minutes, and writes nothing for a feed that has not changed
 - Episode lists load without show notes, which cuts the data read each time a list refreshes (every 5 seconds during playback)
+- The mini player and Now Playing stop polling the player while the app is in the background, which removes 2 to 6 main-thread wakeups per second during screen-off listening
 
 ### Fixed
 - Every screen's top bar sits directly under the status bar; the status bar height was being added twice, which left an empty band above each title
@@ -23,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A feed that lists two items with the same GUID keeps the first; the stored episode alternated between the two on every refresh
 - A subscribe that is interrupted before its episodes are saved recovers on the next refresh; the show stayed empty until the publisher changed the feed
 - Two episodes can no longer share one download file (file names came from a 32-bit hash of the episode id)
+- The Now Playing slider is disabled until the episode's length is known; dragging it before then jumped to 0:00
 
 ## [0.1.2] - 2026-11-11
 

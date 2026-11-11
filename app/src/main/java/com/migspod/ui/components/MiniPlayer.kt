@@ -40,9 +40,6 @@ import coil.compose.AsyncImage
 import com.migspod.data.PodcastRepository
 import com.migspod.player.PlaybackState
 import com.migspod.player.PlayerController
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 
 @Composable
 fun MiniPlayer(
@@ -61,24 +58,16 @@ fun MiniPlayer(
 
     LaunchedEffect(currentEpisodeId) {
         val epId = currentEpisodeId ?: return@LaunchedEffect
-        withContext(Dispatchers.IO) {
-            val episode = repository.getEpisode(epId) ?: return@withContext
-            episodeTitle = episode.title
-            val podcast = repository.getPodcast(episode.podcastFeedUrl)
-            podcastTitle = podcast?.title ?: ""
-            artworkUrl = podcast?.artworkUrl ?: ""
-        }
+        val episode = repository.getEpisode(epId) ?: return@LaunchedEffect
+        episodeTitle = episode.title
+        val podcast = repository.getPodcast(episode.podcastFeedUrl)
+        podcastTitle = podcast?.title ?: ""
+        artworkUrl = podcast?.artworkUrl ?: ""
     }
 
-    LaunchedEffect(player) {
-        while (true) {
-            val p = player
-            if (p != null) {
-                isPlaying = p.playWhenReady
-                if (p.duration > 0) progress = p.currentPosition.toFloat() / p.duration.toFloat()
-            }
-            delay(500)
-        }
+    PollPlayer(player, intervalMs = 500) { p ->
+        isPlaying = p.playWhenReady
+        if (p.duration > 0) progress = p.currentPosition.toFloat() / p.duration.toFloat()
     }
 
     if (currentEpisodeId != null) {

@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Media3 (the player library) is updated from 1.9.2 to 1.11.1, which fixes crashes in its notification and foreground-service handling
 - A feed larger than 50 MB and a download larger than 2 GB are refused, so a faulty or hostile server cannot fill the phone's memory or storage
 - Cloud backup runs only when it is end-to-end encrypted (the phone has a screen lock), because the backed-up database holds feed addresses and a private feed's address is its password. Applies on Android 12 and later
+- Guava (a library Media3 depends on) is raised to 33.7.2, the first release without CVE-2026-102554 (a crafted serialized collection exhausts memory)
 
 ### Fixed
 - Every screen's top bar sits directly under the status bar; the status bar height was being added twice, which left an empty band above each title

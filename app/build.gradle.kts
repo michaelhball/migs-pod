@@ -121,6 +121,9 @@ dependencies {
         // room-testing's MigrationTestHelper needs 1.8+; test classpaths are pinned to
         // the app's runtime versions, where lifecycle alone would resolve 1.7.3.
         implementation(libs.kotlinx.serialization.core)
+        // Media3 resolves a Guava with a known advisory (CVE-2026-102554, a crafted
+        // serialized collection exhausts memory); 33.7.2 is the first fixed release.
+        implementation(libs.guava)
     }
 
     debugImplementation(libs.androidx.ui.tooling)

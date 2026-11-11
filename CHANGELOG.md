@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Two episodes can no longer share one download file (file names came from a 32-bit hash of the episode id)
 - The Now Playing slider is disabled until the episode's length is known; dragging it before then jumped to 0:00
 - A headset or Bluetooth play press after the app was closed waits at most 2 seconds for artwork before starting
+- The window is the app's own dark colour from the first frame of launch; it started as a lighter grey
 
 ## [0.1.2] - 2026-11-11
 

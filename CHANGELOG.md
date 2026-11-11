@@ -9,10 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Downloads opens scrolled to the episode that is loaded in the player and highlights it
+- The player holds a wake lock and Wi-Fi lock while streaming, so playback with the screen off does not stall when the phone goes into power saving
 
 ### Fixed
 - Every screen's top bar sits directly under the status bar; the status bar height was being added twice, which left an empty band above each title
 - A show whose feed URL contains `+` or `%` (common in private feeds with tokens) opens its podcast screen; the screen was empty
+- Episodes whose audio link redirects between http and https (Libsyn, Megaphone and several tracking prefixes do this) stream; they failed with "This episode's audio isn't available" while Download worked
 
 ## [0.1.2] - 2026-11-11
 

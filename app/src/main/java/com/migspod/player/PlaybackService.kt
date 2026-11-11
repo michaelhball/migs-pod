@@ -9,7 +9,10 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
@@ -52,7 +55,15 @@ class PlaybackService : MediaSessionService() {
                 .build()
         )
 
+        // Podcast hosts and their tracking prefixes redirect between http and https,
+        // which the default HTTP data source refuses.
+        val dataSourceFactory = DefaultDataSource.Factory(
+            this,
+            DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true),
+        )
+
         val exoPlayer = ExoPlayer.Builder(this)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(this).setDataSourceFactory(dataSourceFactory))
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setContentType(C.AUDIO_CONTENT_TYPE_SPEECH)
@@ -61,6 +72,8 @@ class PlaybackService : MediaSessionService() {
                 true // handleAudioFocus
             )
             .setHandleAudioBecomingNoisy(true)
+            // Keeps the CPU and Wi-Fi awake while streaming with the screen off.
+            .setWakeMode(C.WAKE_MODE_NETWORK)
             // Surfaces -10s / +30s (rewind/fast-forward) buttons in the media
             // notification and on the lockscreen, matching the in-app controls.
             .setSeekBackIncrementMs(10_000)

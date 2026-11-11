@@ -1,6 +1,7 @@
 package com.migspod.ui.screens
 
 import android.content.Context
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -28,6 +30,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -35,8 +38,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -46,6 +52,7 @@ import coil.compose.AsyncImage
 import com.migspod.data.Episode
 import com.migspod.data.Podcast
 import com.migspod.data.PodcastRepository
+import com.migspod.player.PlaybackState
 import com.migspod.ui.deleteDownload
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -60,6 +67,16 @@ private data class PodcastGroup(
 private enum class SortMode(val label: String) {
     GROUPED("By podcast"),
     BY_DATE("By date"),
+}
+
+private fun List<PodcastGroup>.rowIndexOf(episodeId: String?): Int {
+    var row = 0
+    for (group in this) {
+        val i = group.episodes.indexOfFirst { it.id == episodeId }
+        if (i >= 0) return row + 1 + i
+        row += 1 + group.episodes.size
+    }
+    return -1
 }
 
 internal const val DOWNLOADS_PREFS = "downloads"
@@ -105,6 +122,21 @@ fun DownloadsScreen(
             .sortedByDescending { it.newestDate }
     }
 
+    val playingId by PlaybackState.currentEpisodeId.collectAsStateWithLifecycle()
+    val listState = key(sortMode) { rememberLazyListState() }
+    // Opening the screen (or switching view) lands on the episode that is loaded in
+    // the player, one row down so the row above it gives context. Later changes of
+    // episode leave the scroll position alone.
+    val playingOnOpen = remember(sortMode) { PlaybackState.currentEpisodeId.value }
+    val playingOnOpenRow = if (sortMode == SortMode.GROUPED) {
+        groups.rowIndexOf(playingOnOpen)
+    } else {
+        downloadedEpisodes.indexOfFirst { it.id == playingOnOpen }
+    }
+    LaunchedEffect(sortMode, playingOnOpenRow >= 0) {
+        if (playingOnOpenRow >= 0) listState.scrollToItem((playingOnOpenRow - 1).coerceAtLeast(0))
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text("Downloads") },
@@ -146,7 +178,7 @@ fun DownloadsScreen(
                 )
             }
         } else if (sortMode == SortMode.GROUPED) {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                 groups.forEach { group ->
                     item(key = "header-${group.podcast.feedUrl}") {
                         Row(
@@ -185,6 +217,7 @@ fun DownloadsScreen(
                             podcastTitle = "",
                             podcastArtworkUrl = "",
                             indented = true,
+                            isPlaying = episode.id == playingId,
                             onClick = { onEpisodeClick(episode.id) },
                             onDeleteDownload = { deleteDownload(repository, episode.id) },
                         )
@@ -193,7 +226,7 @@ fun DownloadsScreen(
             }
         } else {
             // Flat date-sorted view
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                 items(downloadedEpisodes, key = { it.id }, contentType = { "episode" }) { episode ->
                     val podcast = podcastCache[episode.podcastFeedUrl]
                     DownloadedEpisodeRow(
@@ -202,6 +235,7 @@ fun DownloadsScreen(
                         podcastTitle = podcast?.title ?: "",
                         podcastArtworkUrl = podcast?.artworkUrl ?: "",
                         indented = false,
+                        isPlaying = episode.id == playingId,
                         onClick = { onEpisodeClick(episode.id) },
                         onDeleteDownload = { deleteDownload(repository, episode.id) },
                     )
@@ -218,6 +252,7 @@ private fun DownloadedEpisodeRow(
     podcastTitle: String,
     podcastArtworkUrl: String,
     indented: Boolean,
+    isPlaying: Boolean,
     onClick: () -> Unit,
     onDeleteDownload: () -> Unit,
 ) {
@@ -226,6 +261,8 @@ private fun DownloadedEpisodeRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .background(if (isPlaying) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f) else Color.Transparent)
+            .semantics { selected = isPlaying }
             .clickable(onClick = onClick)
             .padding(
                 start = if (indented) 68.dp else 16.dp,
@@ -252,7 +289,7 @@ private fun DownloadedEpisodeRow(
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.alpha(if (episode.isCompleted) 0.5f else 1f),
             )
             Spacer(Modifier.height(2.dp))

@@ -5,6 +5,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -17,6 +19,7 @@ import com.migspod.data.AppDatabase
 import com.migspod.data.Episode
 import com.migspod.data.Podcast
 import com.migspod.data.PodcastRepository
+import com.migspod.player.PlaybackState
 import com.migspod.ui.screens.DOWNLOADS_PREFS
 import com.migspod.ui.screens.DownloadsScreen
 import com.migspod.ui.theme.MigsPodTheme
@@ -47,6 +50,7 @@ class DownloadsScreenTest {
 
     @After
     fun teardown() {
+        PlaybackState.currentEpisodeId.value = null
         db.close()
     }
 
@@ -184,6 +188,38 @@ class DownloadsScreenTest {
         }
         composeTestRule.onNodeWithText("By date").assertIsDisplayed()
         composeTestRule.onNodeWithText("1 downloaded").assertIsDisplayed()
+    }
+
+    @Test
+    fun opensOnTheEpisodeLoadedInThePlayerAndHighlightsIt() = runTest {
+        db.podcastDao().upsertPodcast(Podcast(feedUrl = "feed-a", title = "Alpha Podcast"))
+        db.episodeDao().insertEpisodes((1..60).map { n ->
+            Episode(id = "a-$n", podcastFeedUrl = "feed-a", title = "Alpha Ep $n.",
+                publishedDate = 100_000L - n, downloadPath = "/fake/a$n.mp3")
+        })
+        PlaybackState.currentEpisodeId.value = "a-45"
+
+        composeTestRule.setContent {
+            MigsPodTheme {
+                DownloadsScreen(repository = repository, onEpisodeClick = {})
+            }
+        }
+
+        // Row 45 of 60 is far below the first screenful, so it only exists once scrolled to.
+        composeTestRule.waitUntil(timeoutMillis = 5000) {
+            composeTestRule.onAllNodesWithText("Alpha Ep 45.").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText("Alpha Ep 45.").assertIsDisplayed().assertIsSelected()
+        composeTestRule.onNodeWithText("Alpha Ep 44.").assertIsDisplayed().assertIsNotSelected()
+        composeTestRule.onNodeWithText("Alpha Ep 1.").assertDoesNotExist()
+
+        // The grouped view lands on it too.
+        composeTestRule.onNodeWithText("By podcast").performClick()
+        composeTestRule.waitUntil(timeoutMillis = 5000) {
+            composeTestRule.onAllNodesWithText("Alpha Ep 45.").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText("Alpha Ep 45.").assertIsDisplayed().assertIsSelected()
+        composeTestRule.onNodeWithText("Alpha Ep 1.").assertDoesNotExist()
     }
 
     @Test

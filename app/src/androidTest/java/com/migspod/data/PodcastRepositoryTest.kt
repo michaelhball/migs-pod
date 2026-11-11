@@ -285,6 +285,25 @@ class PodcastRepositoryTest {
     }
 
     @Test
+    fun episodesWhoseIdsHashAlikeDownloadToSeparateFiles() = runTest {
+        // "Aa" and "BB" have the same String.hashCode().
+        val feed = feedXml("Twins", listOf(
+            Triple("Aa", "First", server.url("/a.mp3").toString()),
+            Triple("BB", "Second", server.url("/b.mp3").toString()),
+        ))
+        server.enqueue(MockResponse().setBody(feed))
+        repository.subscribeToPodcast(server.url("/feed.xml").toString()).getOrThrow()
+        server.enqueue(audioResponse("first-audio"))
+        server.enqueue(audioResponse("second-audio"))
+
+        assertTrue(repository.downloadEpisode("Aa").isSuccess)
+        assertTrue(repository.downloadEpisode("BB").isSuccess)
+
+        assertEquals("first-audio", File(db.episodeDao().getEpisode("Aa")!!.downloadPath!!).readText())
+        assertEquals("second-audio", File(db.episodeDao().getEpisode("BB")!!.downloadPath!!).readText())
+    }
+
+    @Test
     fun downloadFailsOnHttpErrorAndLeavesNothingBehind() = runTest {
         subscribeWithEpisode("/missing.mp3")
         server.enqueue(MockResponse().setResponseCode(404).setBody("Not found"))

@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Downloads opens scrolled to the episode that is loaded in the player and highlights it
 - The player holds a wake lock and Wi-Fi lock while streaming, so playback with the screen off does not stall when the phone goes into power saving
 - The feed parser accepts only http and https addresses for audio and artwork, ignores entities declared inside a feed, and caps a description at 500,000 characters
+- Feed refresh runs at most 8 feeds at a time, gives up on a feed after 2 minutes, and writes nothing for a feed that has not changed
 
 ### Fixed
 - Every screen's top bar sits directly under the status bar; the status bar height was being added twice, which left an empty band above each title
@@ -19,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A feed with unescaped markup inside a title or description loads; one such element made the whole feed fail with "That doesn't look like a podcast feed"
 - Durations with fractional seconds ("1234.5") are shown
 - A feed that lists two items with the same GUID keeps the first; the stored episode alternated between the two on every refresh
+- A subscribe that is interrupted before its episodes are saved recovers on the next refresh; the show stayed empty until the publisher changed the feed
+- Two episodes can no longer share one download file (file names came from a 32-bit hash of the episode id)
 
 ## [0.1.2] - 2026-11-11
 

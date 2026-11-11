@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
@@ -21,6 +23,7 @@ import java.io.IOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
 class PodcastRepository(
@@ -34,6 +37,12 @@ class PodcastRepository(
         .followRedirects(true)
         .connectionPool(ConnectionPool(5, 30, TimeUnit.SECONDS))
         .build()
+
+    // Feeds and search are small; a server that trickles bytes must not hold a refresh
+    // open. Downloads keep the plain client, since an episode can take many minutes.
+    private val feedClient = client.newBuilder().callTimeout(2, TimeUnit.MINUTES).build()
+
+    private val refreshSlots = Semaphore(MAX_PARALLEL_REFRESHES)
 
     // --- Podcasts ---
 
@@ -50,11 +59,12 @@ class PodcastRepository(
                 description = feed.description,
                 artworkUrl = feed.artworkUrl,
                 lastRefreshed = System.currentTimeMillis(),
-                feedEtag = fetched.etag,
-                feedLastModified = fetched.lastModified,
             )
             podcastDao.upsertPodcast(podcast)
             episodeDao.saveFeedEpisodes(feedUrl, feed.toEpisodes(feedUrl))
+            // Validators go in last: saved before the episodes, a subscribe that died
+            // in between would leave every later refresh answering 304 with no episodes.
+            podcastDao.updatePodcast(podcast.copy(feedEtag = fetched.etag, feedLastModified = fetched.lastModified))
             Result.success(podcast)
         } catch (e: Exception) {
             Result.failure(e)
@@ -79,10 +89,7 @@ class PodcastRepository(
             val cached = podcastDao.getPodcast(feedUrl)
                 ?: return@withContext Result.success(Unit) // not subscribed
             val fetched = fetchFeed(feedUrl, cached)
-            if (fetched == null) { // 304: nothing new
-                podcastDao.updatePodcast(cached.copy(lastRefreshed = System.currentTimeMillis()))
-                return@withContext Result.success(Unit)
-            }
+                ?: return@withContext Result.success(Unit) // 304: nothing new
             val feed = fetched.feed
             episodeDao.saveFeedEpisodes(feedUrl, feed.toEpisodes(feedUrl))
             val existing = podcastDao.getPodcast(feedUrl)
@@ -131,7 +138,7 @@ class PodcastRepository(
             val podcasts = podcastDao.getAllPodcasts().first()
             supervisorScope {
                 podcasts.map { podcast ->
-                    async { refreshPodcast(podcast.feedUrl) }
+                    async { refreshSlots.withPermit { refreshPodcast(podcast.feedUrl) } }
                 }.awaitAll()
             }
             Result.success(Unit)
@@ -222,7 +229,11 @@ class PodcastRepository(
         }
     }
 
-    private fun downloadFileFor(episodeId: String) = File(downloadsDir, "${episodeId.hashCode()}.mp3")
+    private fun downloadFileFor(episodeId: String): File {
+        val digest = MessageDigest.getInstance("SHA-256").digest(episodeId.toByteArray())
+        val name = digest.joinToString("") { (it.toInt() and 0xff).toString(16).padStart(2, '0') }
+        return File(downloadsDir, "$name.mp3")
+    }
 
     // --- Search ---
 
@@ -232,7 +243,7 @@ class PodcastRepository(
                 java.net.URLEncoder.encode(query, "UTF-8")
             }&media=podcast&limit=25"
             val request = Request.Builder().url(url).build()
-            val body = client.newCall(request).execute().use { response ->
+            val body = feedClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) throw IOException("Search isn't available right now")
                 response.body?.string()
             } ?: return@withContext Result.success(emptyList())
@@ -270,7 +281,7 @@ class PodcastRepository(
             cached?.feedEtag?.let { header("If-None-Match", it) }
             cached?.feedLastModified?.let { header("If-Modified-Since", it) }
         }.build()
-        client.newCall(request).execute().use { resp ->
+        feedClient.newCall(request).execute().use { resp ->
             if (resp.code == 304) return null
             if (!resp.isSuccessful) throw IOException("Server returned HTTP ${resp.code}")
             val body = resp.body ?: throw IOException("Empty response from feed")
@@ -294,6 +305,7 @@ class PodcastRepository(
 }
 
 private const val PART_SUFFIX = ".part"
+private const val MAX_PARALLEL_REFRESHES = 8
 private const val NOT_A_FEED = "That doesn't look like a podcast feed"
 
 /** A short, human-readable reason for a failed network/feed operation. */

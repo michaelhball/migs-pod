@@ -46,13 +46,12 @@ import com.migspod.data.PodcastRepository
 import com.migspod.player.PlayerController
 import com.migspod.ui.components.LinkifiedText
 import com.migspod.ui.deleteDownload
+import com.migspod.ui.formatFullDate
 import com.migspod.ui.startDownload
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,7 +90,6 @@ fun EpisodeDetailContent(
     val downloadingIds by repository.downloadingIds.collectAsStateWithLifecycle()
     val isDownloading = episodeId in downloadingIds
     val scope = rememberCoroutineScope()
-    val dateFormat = remember { SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()) }
 
     LaunchedEffect(episode?.podcastFeedUrl) {
         val feedUrl = episode?.podcastFeedUrl ?: return@LaunchedEffect
@@ -137,7 +135,7 @@ fun EpisodeDetailContent(
             Row {
                 if (ep.publishedDate > 0) {
                     Text(
-                        text = dateFormat.format(Date(ep.publishedDate)),
+                        text = formatFullDate(ep.publishedDate),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

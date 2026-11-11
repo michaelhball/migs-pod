@@ -54,9 +54,8 @@ import com.migspod.data.Podcast
 import com.migspod.data.PodcastRepository
 import com.migspod.player.PlaybackState
 import com.migspod.ui.deleteDownload
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.migspod.ui.formatDayAndYear
+import com.migspod.ui.formatDuration
 
 private data class PodcastGroup(
     val podcast: Podcast,
@@ -256,7 +255,6 @@ private fun DownloadedEpisodeRow(
     onClick: () -> Unit,
     onDeleteDownload: () -> Unit,
 ) {
-    val dateFormat = remember { SimpleDateFormat("MMM d, yyyy", Locale.getDefault()) }
 
     Row(
         modifier = Modifier
@@ -318,7 +316,7 @@ private fun DownloadedEpisodeRow(
                 }
                 if (episode.publishedDate > 0) {
                     Text(
-                        text = dateFormat.format(Date(episode.publishedDate)),
+                        text = formatDayAndYear(episode.publishedDate),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -354,11 +352,4 @@ private fun DownloadedEpisodeRow(
             )
         }
     }
-}
-
-private fun formatDuration(ms: Long): String {
-    val totalSeconds = ms / 1000
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
-    return if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
 }

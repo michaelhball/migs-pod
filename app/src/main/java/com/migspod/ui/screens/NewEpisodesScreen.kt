@@ -46,13 +46,12 @@ import coil.compose.AsyncImage
 import com.migspod.data.Episode
 import com.migspod.data.Podcast
 import com.migspod.data.PodcastRepository
+import com.migspod.ui.formatDay
+import com.migspod.ui.formatDuration
 import com.migspod.ui.startDownload
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneId
-import java.util.Date
-import java.util.Locale
 
 internal enum class EpisodeAge(val label: String) {
     TODAY("Today"),
@@ -173,7 +172,6 @@ private fun NewEpisodeRow(
     onClick: () -> Unit,
     onDownload: () -> Unit,
 ) {
-    val dateFormat = remember { SimpleDateFormat("MMM d", Locale.getDefault()) }
 
     Row(
         modifier = Modifier
@@ -219,7 +217,7 @@ private fun NewEpisodeRow(
                 )
                 if (episode.publishedDate > 0) {
                     Text(
-                        text = " · ${dateFormat.format(Date(episode.publishedDate))}",
+                        text = " · ${formatDay(episode.publishedDate)}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -269,11 +267,4 @@ private fun NewEpisodeRow(
             }
         }
     }
-}
-
-private fun formatDuration(ms: Long): String {
-    val totalSeconds = ms / 1000
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
-    return if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
 }

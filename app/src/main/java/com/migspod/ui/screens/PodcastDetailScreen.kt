@@ -47,19 +47,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.migspod.MigsPodApp as App
 import com.migspod.data.Episode
-import com.migspod.ui.components.LinkifiedText
 import com.migspod.data.Podcast
 import com.migspod.data.PodcastRepository
 import com.migspod.player.PlaybackState
 import com.migspod.player.PlayerController
+import com.migspod.ui.components.LinkifiedText
 import com.migspod.ui.deleteDownload
+import com.migspod.ui.formatDayAndYear
+import com.migspod.ui.formatDuration
 import com.migspod.ui.startDownload
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -215,7 +214,6 @@ private fun EpisodeRow(
     onClick: () -> Unit,
     onDownload: () -> Unit,
 ) {
-    val dateFormat = remember { SimpleDateFormat("MMM d, yyyy", Locale.getDefault()) }
     var menuOpen by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val separator = @Composable {
@@ -270,7 +268,7 @@ private fun EpisodeRow(
                 }
                 if (episode.publishedDate > 0) {
                     Text(
-                        text = dateFormat.format(Date(episode.publishedDate)),
+                        text = formatDayAndYear(episode.publishedDate),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -340,11 +338,4 @@ private fun EpisodeRow(
             }
         }
     }
-}
-
-private fun formatDuration(ms: Long): String {
-    val totalSeconds = ms / 1000
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
-    return if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
 }

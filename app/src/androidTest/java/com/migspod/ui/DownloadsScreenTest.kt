@@ -1,18 +1,23 @@
 package com.migspod.ui
 
 import android.content.Context
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.core.content.edit
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.migspod.data.AppDatabase
 import com.migspod.data.Episode
 import com.migspod.data.Podcast
 import com.migspod.data.PodcastRepository
+import com.migspod.ui.screens.DOWNLOADS_PREFS
 import com.migspod.ui.screens.DownloadsScreen
 import com.migspod.ui.theme.MigsPodTheme
 import kotlinx.coroutines.test.runTest
@@ -33,6 +38,7 @@ class DownloadsScreenTest {
     @Before
     fun setup() {
         val context = ApplicationProvider.getApplicationContext<Context>()
+        context.getSharedPreferences(DOWNLOADS_PREFS, Context.MODE_PRIVATE).edit(commit = true) { clear() }
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
@@ -144,6 +150,40 @@ class DownloadsScreenTest {
         // Episodes still visible
         composeTestRule.onNodeWithText("Alpha Ep").assertIsDisplayed()
         composeTestRule.onNodeWithText("Beta Ep").assertIsDisplayed()
+    }
+
+    @Test
+    fun keepsTheChosenViewAfterLeavingAndReturning() = runTest {
+        db.podcastDao().upsertPodcast(Podcast(feedUrl = "feed-a", title = "Alpha Podcast"))
+        db.episodeDao().insertEpisodes(listOf(
+            Episode(id = "a-1", podcastFeedUrl = "feed-a", title = "Alpha Ep",
+                publishedDate = 1000, downloadPath = "/fake/a1.mp3"),
+        ))
+
+        var onDownloadsTab by mutableStateOf(true)
+        composeTestRule.setContent {
+            MigsPodTheme {
+                if (onDownloadsTab) DownloadsScreen(repository = repository, onEpisodeClick = {})
+            }
+        }
+
+        composeTestRule.waitUntil(timeoutMillis = 5000) {
+            composeTestRule.onAllNodesWithText("Alpha Ep").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText("By podcast").performClick()
+        composeTestRule.waitForIdle()
+
+        onDownloadsTab = false
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Alpha Ep").assertDoesNotExist()
+        onDownloadsTab = true
+
+        // Still grouped: the toggle offers "By date" and the podcast header shows.
+        composeTestRule.waitUntil(timeoutMillis = 5000) {
+            composeTestRule.onAllNodesWithText("Alpha Ep").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText("By date").assertIsDisplayed()
+        composeTestRule.onNodeWithText("1 downloaded").assertIsDisplayed()
     }
 
     @Test

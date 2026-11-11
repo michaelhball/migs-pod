@@ -1,5 +1,6 @@
 package com.migspod.ui.screens
 
+import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -29,16 +30,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.edit
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.migspod.data.Episode
@@ -60,6 +62,9 @@ private enum class SortMode(val label: String) {
     BY_DATE("By date"),
 }
 
+internal const val DOWNLOADS_PREFS = "downloads"
+private const val KEY_GROUP_BY_PODCAST = "group_by_podcast"
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DownloadsScreen(
@@ -68,7 +73,11 @@ fun DownloadsScreen(
 ) {
     val downloadedOrNull by remember { repository.getDownloadedEpisodes() }.collectAsStateWithLifecycle(null)
     val downloadedEpisodes = downloadedOrNull.orEmpty()
-    var sortMode by rememberSaveable { mutableStateOf(SortMode.BY_DATE) }
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences(DOWNLOADS_PREFS, Context.MODE_PRIVATE) }
+    var sortMode by remember {
+        mutableStateOf(if (prefs.getBoolean(KEY_GROUP_BY_PODCAST, false)) SortMode.GROUPED else SortMode.BY_DATE)
+    }
 
     // Cache podcast metadata — single batch query
     var podcastCache by remember { mutableStateOf<Map<String, Podcast>>(emptyMap()) }
@@ -103,6 +112,7 @@ fun DownloadsScreen(
                 if (downloadedEpisodes.isNotEmpty()) {
                     TextButton(onClick = {
                         sortMode = if (sortMode == SortMode.GROUPED) SortMode.BY_DATE else SortMode.GROUPED
+                        prefs.edit { putBoolean(KEY_GROUP_BY_PODCAST, sortMode == SortMode.GROUPED) }
                     }) {
                         Text(
                             if (sortMode == SortMode.GROUPED) "By date" else "By podcast",

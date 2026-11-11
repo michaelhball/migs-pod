@@ -140,4 +140,71 @@ class RssFeedParserInstrumentedTest {
         assertEquals("Tom & Jerry’s show.\n\nPart two.", episode.description)
         assertEquals(1_704_448_800_000L, episode.publishedDate)
     }
+
+    private fun feedWithItem(item: String, channelExtras: String = "") = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+          <channel>
+            <title>Test Podcast</title>
+            $channelExtras
+            <item>
+              <guid>ep-1</guid>
+              $item
+            </item>
+          </channel>
+        </rss>
+    """.trimIndent()
+
+    private val audio = """<enclosure url="https://example.com/ep1.mp3" type="audio/mpeg"/>"""
+
+    @Test
+    fun readsDescriptionAndTitleWithUnescapedMarkup() {
+        val feed = RssFeedParser.parse(
+            feedWithItem(
+                """<title>Part <em>two</em></title>
+                   <description><p>First.</p><p>See <a href="https://example.com/notes">the notes</a>.</p></description>
+                   $audio"""
+            ).byteInputStream()
+        )
+        val episode = feed.episodes.single()
+        assertEquals("Part two", episode.title)
+        assertEquals("First.\n\nSee the notes (https://example.com/notes).", episode.description)
+    }
+
+    @Test
+    fun dropsAudioAndArtworkThatAreNotWebAddresses() {
+        val feed = RssFeedParser.parse(
+            feedWithItem(
+                """<title>Local file</title>
+                   <enclosure url="file:///data/data/com.migspod/databases/migspod.db" type="audio/mpeg"/>""",
+                channelExtras = """<itunes:image href="content://com.android.contacts/contacts"/>""",
+            ).byteInputStream()
+        )
+        assertEquals("", feed.artworkUrl)
+        assertTrue(feed.episodes.isEmpty())
+    }
+
+    @Test
+    fun rejectsEntitiesDeclaredByTheFeed() {
+        val feed = """
+            <?xml version="1.0"?>
+            <!DOCTYPE rss [
+              <!ENTITY a "aaaaaaaaaa">
+              <!ENTITY b "&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;">
+              <!ENTITY c "&b;&b;&b;&b;&b;&b;&b;&b;&b;&b;">
+            ]>
+            <rss version="2.0"><channel><title>&c;</title></channel></rss>
+        """.trimIndent()
+        val result = runCatching { RssFeedParser.parse(feed.byteInputStream()) }
+        assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun capsVeryLongDescriptions() {
+        val feed = RssFeedParser.parse(
+            feedWithItem("<title>Long</title><description>${"word ".repeat(200_000)}</description>$audio")
+                .byteInputStream()
+        )
+        assertEquals(500_000, feed.episodes.single().description.length)
+    }
 }

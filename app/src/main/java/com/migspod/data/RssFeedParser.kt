@@ -25,6 +25,9 @@ data class ParsedEpisode(
     val durationMs: Long,
 )
 
+// A row above about 2 MB cannot be read back from the database.
+private const val MAX_DESCRIPTION_CHARS = 500_000
+
 object RssFeedParser {
 
     private val htmlTagRegex = Regex("<[^>]*>")
@@ -69,6 +72,8 @@ object RssFeedParser {
     fun parse(input: InputStream): ParsedFeed {
         val parser = Xml.newPullParser()
         parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false)
+        // Entities declared in a feed's own DTD can expand without limit.
+        parser.setFeature(XmlPullParser.FEATURE_PROCESS_DOCDECL, false)
         parser.setInput(input, null)
         parser.nextTag()
 
@@ -102,40 +107,40 @@ object RssFeedParser {
                             itemDuration = 0L
                         }
                         "title" -> {
-                            val text = parser.nextText() ?: ""
+                            val text = parser.readText()
                             if (insideItem) itemTitle = text
                             else if (insideChannel && feedTitle.isEmpty()) feedTitle = text
                         }
                         "description" -> {
-                            val text = parser.nextText() ?: ""
+                            val text = parser.readText(keepMarkup = true)
                             if (insideItem) itemDescription = htmlToText(text)
                             else if (insideChannel && feedDescription.isEmpty()) feedDescription = htmlToText(text)
                         }
                         "guid" -> {
-                            if (insideItem) itemGuid = parser.nextText() ?: ""
+                            if (insideItem) itemGuid = parser.readText()
                         }
                         "pubDate" -> {
-                            if (insideItem) itemPubDate = parseDate(parser.nextText() ?: "")
+                            if (insideItem) itemPubDate = parseDate(parser.readText())
                         }
                         "enclosure" -> {
                             if (insideItem) {
                                 val type = parser.getAttributeValue(null, "type") ?: ""
                                 if (type.startsWith("audio/")) {
-                                    itemAudioUrl = parser.getAttributeValue(null, "url") ?: ""
+                                    itemAudioUrl = parser.getAttributeValue(null, "url").webUrlOrEmpty()
                                 }
                             }
                         }
                         "itunes:author" -> {
-                            val text = parser.nextText() ?: ""
+                            val text = parser.readText()
                             if (!insideItem && feedAuthor.isEmpty()) feedAuthor = text
                         }
                         "itunes:image" -> {
                             if (!insideItem && feedArtwork.isEmpty()) {
-                                feedArtwork = parser.getAttributeValue(null, "href") ?: ""
+                                feedArtwork = parser.getAttributeValue(null, "href").webUrlOrEmpty()
                             }
                         }
                         "itunes:duration" -> {
-                            if (insideItem) itemDuration = parseDuration(parser.nextText() ?: "")
+                            if (insideItem) itemDuration = parseDuration(parser.readText())
                         }
                     }
                 }
@@ -171,6 +176,45 @@ object RssFeedParser {
             episodes = episodes,
         )
     }
+
+    /**
+     * The text of the element the parser is on, including text inside child elements
+     * (a title or description with unescaped markup). With [keepMarkup] the child tags
+     * are written back out, for [htmlToText] to turn into line breaks and links.
+     */
+    private fun XmlPullParser.readText(keepMarkup: Boolean = false): String {
+        val text = StringBuilder()
+        var depth = 1
+        while (depth > 0) {
+            when (next()) {
+                XmlPullParser.TEXT -> text.append(getText())
+                XmlPullParser.START_TAG -> {
+                    depth++
+                    if (keepMarkup) {
+                        text.append('<').append(name)
+                        for (i in 0 until attributeCount) {
+                            text.append(' ').append(getAttributeName(i))
+                                .append("=\"").append(getAttributeValue(i)).append('"')
+                        }
+                        text.append('>')
+                    }
+                }
+                XmlPullParser.END_TAG -> {
+                    depth--
+                    if (keepMarkup && depth > 0) text.append("</").append(name).append('>')
+                }
+                XmlPullParser.END_DOCUMENT -> break
+            }
+        }
+        return text.toString()
+    }
+
+    // Audio and artwork are fetched as given, so only web addresses are accepted:
+    // a feed must not be able to point the player at file:// or content:// URIs.
+    private fun String?.webUrlOrEmpty(): String = this?.trim()?.takeIf { it.isWebUrl() } ?: ""
+
+    private fun String.isWebUrl(): Boolean =
+        startsWith("http://", ignoreCase = true) || startsWith("https://", ignoreCase = true)
 
     internal fun parseDate(dateStr: String): Long {
         val trimmed = dateStr.trim()
@@ -226,20 +270,21 @@ object RssFeedParser {
                 3 -> {
                     val h = parts[0].toLongOrNull() ?: 0
                     val m = parts[1].toLongOrNull() ?: 0
-                    val s = parts[2].toLongOrNull() ?: 0
-                    (h * 3600 + m * 60 + s) * 1000
+                    (h * 3600 + m * 60) * 1000 + parts[2].secondsToMs()
                 }
                 2 -> {
                     val m = parts[0].toLongOrNull() ?: 0
-                    val s = parts[1].toLongOrNull() ?: 0
-                    (m * 60 + s) * 1000
+                    m * 60 * 1000 + parts[1].secondsToMs()
                 }
                 else -> 0L
             }
         }
-        val seconds = trimmed.toLongOrNull() ?: 0L
-        return seconds * 1000
+        return trimmed.secondsToMs()
     }
+
+    // Seconds may carry a fraction ("1234.5").
+    private fun String.secondsToMs(): Long =
+        toDoubleOrNull()?.takeIf { it.isFinite() }?.let { (it * 1000).toLong() } ?: 0L
 
     /**
      * Show notes arrive as HTML. Convert to readable plain text: keep paragraph and
@@ -247,7 +292,7 @@ object RssFeedParser {
      */
     internal fun htmlToText(html: String): String {
         if (!htmlTagRegex.containsMatchIn(html)) {
-            return normalizeWhitespace(decodeEntities(html))
+            return normalizeWhitespace(decodeEntities(html)).take(MAX_DESCRIPTION_CHARS)
         }
         val text = html
             .replace('\n', ' ')
@@ -256,14 +301,12 @@ object RssFeedParser {
             .replace(blockEndTagRegex, "\n\n")
             .replace(listItemTagRegex, "\n• ")
             .replace(htmlTagRegex, "")
-        return normalizeWhitespace(decodeEntities(text))
+        return normalizeWhitespace(decodeEntities(text)).take(MAX_DESCRIPTION_CHARS)
     }
 
     private fun anchorText(href: String, innerHtml: String): String {
         val text = innerHtml.replace(htmlTagRegex, "").trim()
-        if (!href.startsWith("http://", ignoreCase = true) && !href.startsWith("https://", ignoreCase = true)) {
-            return text
-        }
+        if (!href.isWebUrl()) return text
         val bareHref = href.substringAfter("://").removePrefix("www.").trimEnd('/')
         val bareText = text.substringAfter("://").removePrefix("www.").trimEnd('/')
         return when {

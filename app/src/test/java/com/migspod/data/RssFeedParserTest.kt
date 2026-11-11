@@ -23,6 +23,13 @@ class RssFeedParserTest {
     }
 
     @Test
+    fun parseDuration_fractionalSeconds() {
+        assertEquals(1_234_500L, RssFeedParser.parseDuration("1234.5"))
+        assertEquals(3_723_500L, RssFeedParser.parseDuration("01:02:03.5"))
+        assertEquals(62_250L, RssFeedParser.parseDuration("1:02.25"))
+    }
+
+    @Test
     fun parseDuration_zero() {
         assertEquals(0L, RssFeedParser.parseDuration("0"))
     }

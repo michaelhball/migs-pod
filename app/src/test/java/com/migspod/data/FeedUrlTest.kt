@@ -70,4 +70,11 @@ class FeedUrlTest {
         assertEquals(false, looksLikeFeedUrl("the daily"))
         assertEquals(false, looksLikeFeedUrl("99% invisible"))
     }
+
+    @Test
+    fun otherSchemeSwapsHttpAndHttps() {
+        assertEquals("http://example.com/feed?x=1", otherScheme("https://example.com/feed?x=1"))
+        assertEquals("https://example.com/feed", otherScheme("http://example.com/feed"))
+        assertEquals(null, otherScheme("ftp://example.com/feed"))
+    }
 }

@@ -49,6 +49,8 @@ class PodcastRepository(
 
     suspend fun subscribeToPodcast(feedUrl: String): Result<Podcast> = withContext(Dispatchers.IO) {
         try {
+            // Already subscribed under the other scheme: the same show, not a second one.
+            otherScheme(feedUrl)?.let { podcastDao.getPodcast(it) }?.let { return@withContext Result.success(it) }
             val fetched = fetchFeed(feedUrl) ?: throw IOException("Empty response from feed")
             val feed = fetched.feed
             val podcast = Podcast(

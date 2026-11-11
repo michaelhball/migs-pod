@@ -50,6 +50,7 @@ import com.migspod.data.PodcastRepository
 import com.migspod.data.SearchResult
 import com.migspod.data.looksLikeFeedUrl
 import com.migspod.data.toUserMessage
+import com.migspod.data.withoutScheme
 import com.migspod.ui.components.AddFeedDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -78,7 +79,7 @@ fun SearchScreen(
 
     val subscribedPodcasts by remember { repository.getAllPodcasts() }.collectAsStateWithLifecycle(emptyList())
     val subscribedUrls = remember(subscribedPodcasts) {
-        subscribedPodcasts.map { it.feedUrl }.toSet()
+        subscribedPodcasts.associate { it.feedUrl.withoutScheme() to it.feedUrl }
     }
 
     fun subscribe(feedUrl: String, openWhenDone: Boolean) {
@@ -90,7 +91,7 @@ fun SearchScreen(
             withContext(Dispatchers.Main) {
                 subscribingUrls = subscribingUrls - feedUrl
                 result
-                    .onSuccess { if (openWhenDone) onResultClick(feedUrl) }
+                    .onSuccess { if (openWhenDone) onResultClick(it.feedUrl) }
                     .onFailure { App.instance.showToast("Couldn't subscribe: ${it.toUserMessage()}") }
             }
         }
@@ -155,14 +156,15 @@ fun SearchScreen(
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(results, key = { it.feedUrl }, contentType = { "result" }) { result ->
-                val isSubscribed = result.feedUrl in subscribedUrls
+                val subscribedUrl = subscribedUrls[result.feedUrl.withoutScheme()]
+                val isSubscribed = subscribedUrl != null
                 val isSubscribing = result.feedUrl in subscribingUrls
 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable(enabled = !isSubscribing) {
-                            if (isSubscribed) onResultClick(result.feedUrl)
+                            if (subscribedUrl != null) onResultClick(subscribedUrl)
                             else subscribe(result.feedUrl, openWhenDone = true)
                         }
                         .padding(horizontal = 16.dp, vertical = 8.dp),

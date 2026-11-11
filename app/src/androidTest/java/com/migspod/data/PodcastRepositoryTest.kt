@@ -256,6 +256,19 @@ class PodcastRepositoryTest {
     }
 
     @Test
+    fun subscribingUnderTheOtherSchemeKeepsOneSubscription() = runTest {
+        val httpUrl = server.url("/feed.xml").toString()
+        server.enqueue(MockResponse().setBody(feedXml("Once", listOf(Triple("ep-1", "Episode", "https://example.com/1.mp3")))))
+        repository.subscribeToPodcast(httpUrl).getOrThrow()
+
+        val again = repository.subscribeToPodcast(httpUrl.replaceFirst("http://", "https://")).getOrThrow()
+
+        assertEquals(httpUrl, again.feedUrl)
+        assertEquals(1, repository.getAllPodcasts().first().size)
+        assertEquals(1, server.requestCount)
+    }
+
+    @Test
     fun refreshAllFailsOnlyWhenEveryFeedFails() = runTest {
         val episode = listOf(Triple("ep-1", "Episode", "https://example.com/1.mp3"))
         server.enqueue(MockResponse().setBody(feedXml("Up", episode)))

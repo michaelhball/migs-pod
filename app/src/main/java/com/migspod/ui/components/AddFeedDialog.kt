@@ -57,7 +57,7 @@ fun AddFeedDialog(
             withContext(Dispatchers.Main) {
                 busy = false
                 result
-                    .onSuccess { onAdded(feedUrl) }
+                    .onSuccess { onAdded(it.feedUrl) }
                     .onFailure { error = it.toUserMessage() }
             }
         }

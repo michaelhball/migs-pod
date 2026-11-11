@@ -22,6 +22,16 @@ fun normalizeFeedUrl(input: String): String? {
     return url
 }
 
+/** A feed's address without its scheme: the http and https forms are one feed. */
+fun String.withoutScheme(): String = substringAfter("://")
+
+/** [feedUrl] under the other of http and https, or null for any other scheme. */
+fun otherScheme(feedUrl: String): String? = when {
+    feedUrl.startsWith("https://", ignoreCase = true) -> "http://" + feedUrl.withoutScheme()
+    feedUrl.startsWith("http://", ignoreCase = true) -> "https://" + feedUrl.withoutScheme()
+    else -> null
+}
+
 /** Whether a search query is really a pasted feed URL rather than search terms. */
 fun looksLikeFeedUrl(query: String): Boolean {
     val trimmed = query.trim()

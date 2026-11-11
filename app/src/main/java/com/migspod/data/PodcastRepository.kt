@@ -23,7 +23,6 @@ import java.io.IOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
-import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
 class PodcastRepository(
@@ -229,11 +228,7 @@ class PodcastRepository(
         }
     }
 
-    private fun downloadFileFor(episodeId: String): File {
-        val digest = MessageDigest.getInstance("SHA-256").digest(episodeId.toByteArray())
-        val name = digest.joinToString("") { (it.toInt() and 0xff).toString(16).padStart(2, '0') }
-        return File(downloadsDir, "$name.mp3")
-    }
+    private fun downloadFileFor(episodeId: String) = File(downloadsDir, "${sha256Hex(episodeId)}.mp3")
 
     // --- Search ---
 

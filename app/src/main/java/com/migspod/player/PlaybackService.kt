@@ -26,6 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 private const val MEDIA_NOTIFICATION_ID = 1001
 
@@ -121,7 +122,7 @@ class PlaybackService : MediaSessionService() {
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                PlaybackState.currentEpisodeId.value = mediaItem?.mediaId
+                PlaybackState.currentEpisodeId.value = mediaItem?.episodeId
             }
 
             override fun onPositionDiscontinuity(
@@ -135,7 +136,7 @@ class PlaybackService : MediaSessionService() {
                     // Switching or closing episodes: keep where the outgoing one got
                     // to. Not at the natural end — that one was just reset and marked played.
                     Player.DISCONTINUITY_REASON_REMOVE -> {
-                        val episodeId = oldPosition.mediaItem?.mediaId ?: return
+                        val episodeId = oldPosition.mediaItem?.episodeId ?: return
                         if (exoPlayer.playbackState != Player.STATE_ENDED) {
                             savePosition(episodeId, oldPosition.positionMs)
                         }
@@ -187,7 +188,7 @@ class PlaybackService : MediaSessionService() {
         val p = player ?: return
         // The player's own item rather than PlaybackState's id, which the UI flips
         // slightly before the player actually switches episodes.
-        val episodeId = p.currentMediaItem?.mediaId ?: return
+        val episodeId = p.currentMediaItem?.episodeId ?: return
         savePosition(episodeId, p.currentPosition)
     }
 
@@ -199,7 +200,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     private fun markCurrentCompleted() {
-        val episodeId = player?.currentMediaItem?.mediaId ?: return
+        val episodeId = player?.currentMediaItem?.episodeId ?: return
         MigsPodApp.instance.appScope.launch(dbWrites) {
             val db = MigsPodApp.instance.database
             db.episodeDao().markCompleted(episodeId, true)
@@ -234,7 +235,9 @@ class PlaybackService : MediaSessionService() {
                     return@launch
                 }
                 val (episode, podcast) = last
-                val item = buildMediaItem(episode, podcast, loadArtworkBytes(podcast?.artworkUrl))
+                // A slow artwork fetch must not hold up the headset's play press.
+                val artwork = withTimeoutOrNull(2_000) { loadArtworkBytes(podcast?.artworkUrl) }
+                val item = buildMediaItem(episode, podcast, artwork)
                 result.set(MediaSession.MediaItemsWithStartPosition(listOf(item), 0, episode.playbackPositionMs))
             }
             return result

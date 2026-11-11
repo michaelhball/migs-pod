@@ -62,7 +62,7 @@ object PlayerController {
         val controller = awaitController() ?: return
         // Already loaded (e.g. "Resume" from its own sheet): just carry on. Reloading
         // would rebuffer and jump back to the last saved position (up to 5s stale).
-        if (controller.currentMediaItem?.mediaId == episode.id) {
+        if (controller.currentMediaItem?.episodeId == episode.id) {
             controller.play()
             return
         }
@@ -169,7 +169,7 @@ object PlayerController {
             withContext(Dispatchers.Main) {
                 val controller = mediaController ?: return@withContext
                 val current = controller.currentMediaItem ?: return@withContext
-                if (current.mediaId != episodeId) return@withContext // moved on already
+                if (current.episodeId != episodeId) return@withContext // moved on already
                 val metadata = current.mediaMetadata.buildUpon()
                     .setArtworkData(bytes, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
                     .build()

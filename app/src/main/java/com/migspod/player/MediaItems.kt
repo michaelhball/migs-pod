@@ -10,16 +10,29 @@ import coil.request.SuccessResult
 import com.migspod.MigsPodApp
 import com.migspod.data.Episode
 import com.migspod.data.Podcast
+import com.migspod.data.sha256Hex
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
+import java.util.concurrent.ConcurrentHashMap
 
 // Plenty for a lockscreen/notification; feed artwork is often 3000px (~36MB decoded).
 private const val ARTWORK_SIZE_PX = 512
 
+// Other apps can read a media id (media controllers, notification listeners), and an
+// episode id can contain a private feed URL or audio URL. The player is given a hash
+// of the episode id, and this process keeps the way back.
+private val episodeIdsByMediaId = ConcurrentHashMap<String, String>()
+
+private fun mediaIdFor(episodeId: String): String =
+    sha256Hex(episodeId).also { episodeIdsByMediaId[it] = episodeId }
+
+/** The id of the episode a media item built by [buildMediaItem] plays. */
+internal val MediaItem.episodeId: String? get() = episodeIdsByMediaId[mediaId]
+
 internal fun buildMediaItem(episode: Episode, podcast: Podcast?, artwork: ByteArray? = null): MediaItem =
     MediaItem.Builder()
-        .setMediaId(episode.id)
+        .setMediaId(mediaIdFor(episode.id))
         .setUri(episode.downloadPath ?: episode.audioUrl)
         .setMediaMetadata(
             MediaMetadata.Builder()

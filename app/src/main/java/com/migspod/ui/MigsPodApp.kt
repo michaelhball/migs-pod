@@ -1,5 +1,6 @@
 package com.migspod.ui
 
+import android.net.Uri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -45,8 +46,6 @@ import com.migspod.ui.screens.PodcastDetailScreen
 import com.migspod.ui.screens.SearchScreen
 import com.migspod.ui.components.BatteryOptimizationNudge
 import com.migspod.ui.components.MiniPlayer
-import java.net.URLDecoder
-import java.net.URLEncoder
 
 private data class EpisodeSheetTarget(val episodeId: String, val showDeleteAction: Boolean)
 
@@ -57,7 +56,7 @@ sealed class Screen(val route: String, val label: String) {
     object Search : Screen("search", "Search")
     object PodcastDetail : Screen("podcast/{feedUrl}", "Podcast") {
         fun createRoute(feedUrl: String): String {
-            return "podcast/${URLEncoder.encode(feedUrl, "UTF-8")}"
+            return "podcast/${Uri.encode(feedUrl)}"
         }
     }
     object NowPlaying : Screen("now_playing", "Now Playing")
@@ -194,10 +193,8 @@ fun MigsPodApp() {
                     route = Screen.PodcastDetail.route,
                     arguments = listOf(navArgument("feedUrl") { type = NavType.StringType })
                 ) { backStackEntry ->
-                    val feedUrl = URLDecoder.decode(
-                        backStackEntry.arguments?.getString("feedUrl") ?: "",
-                        "UTF-8"
-                    )
+                    // Navigation has already decoded the argument.
+                    val feedUrl = backStackEntry.arguments?.getString("feedUrl") ?: ""
                     PodcastDetailScreen(
                         feedUrl = feedUrl,
                         repository = repository,

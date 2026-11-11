@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Every screen's top bar sits directly under the status bar; the status bar height was being added twice, which left an empty band above each title
+- A show whose feed URL contains `+` or `%` (common in private feeds with tokens) opens its podcast screen; the screen was empty
 
 ## [0.1.2] - 2026-11-11
 

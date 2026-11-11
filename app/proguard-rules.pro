@@ -1,26 +1,9 @@
-# MigsPod ProGuard/R8 Rules
+# MigsPod R8 rules.
+# Room, Media3, Coil and coroutines ship their own consumer rules, and the app does
+# no reflection of its own, so nothing here needs a -keep.
 
-# OkHttp
+# Optional TLS providers OkHttp looks for at runtime.
 -dontwarn okhttp3.internal.platform.**
 -dontwarn org.conscrypt.**
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
-
-# Coil (uses OkHttp internally)
--dontwarn coil.**
-
-# Room - keep generated implementations
--keep class * extends androidx.room.RoomDatabase
--keepclassmembers class * {
-    @androidx.room.* <methods>;
-}
-
-# Media3 / ExoPlayer
--keep class androidx.media3.** { *; }
--dontwarn androidx.media3.**
-
-# Coroutines
--dontwarn kotlinx.coroutines.**
-
-# Keep data classes used with RSS/JSON parsing
--keep class com.migspod.data.** { *; }

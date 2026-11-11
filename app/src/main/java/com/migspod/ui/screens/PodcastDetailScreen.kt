@@ -150,7 +150,8 @@ fun PodcastDetailScreen(
         ) {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 // Podcast header as first item
-                item(key = "header") {
+                // An Int key: episode keys are ids from the feed, which are Strings.
+                item(key = 0) {
                     podcast?.let { p -> PodcastHeader(podcast = p) }
                 }
 

@@ -137,7 +137,8 @@ fun NewEpisodesScreen(
             ) {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     sections.forEach { (age, sectionEpisodes) ->
-                        item(key = age.name, contentType = "header") {
+                        // An Int key: episode keys are ids from the feed, which are Strings.
+                        item(key = age.ordinal, contentType = "header") {
                             Text(
                                 text = age.label,
                                 style = MaterialTheme.typography.titleSmall,

@@ -77,7 +77,9 @@ interface EpisodeDao {
      * leaving listening state (position, played, download) untouched.
      */
     @Transaction
-    suspend fun saveFeedEpisodes(feedUrl: String, episodes: List<Episode>) {
+    suspend fun saveFeedEpisodes(feedUrl: String, feedEpisodes: List<Episode>) {
+        // Two items of one feed can carry the same GUID; the first one listed is kept.
+        val episodes = feedEpisodes.distinctBy { it.id }
         val existing = getEpisodesForPodcastOnce(feedUrl).associateBy { it.id }
         // An episode's id is its feed GUID, and two feeds of one show can share GUIDs
         // (a public feed and a members-only feed). The second feed stores those episodes

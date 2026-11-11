@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Episodes whose audio link redirects between http and https (Libsyn, Megaphone and several tracking prefixes do this) stream; they failed with "This episode's audio isn't available" while Download worked
 - A feed with unescaped markup inside a title or description loads; one such element made the whole feed fail with "That doesn't look like a podcast feed"
 - Durations with fractional seconds ("1234.5") are shown
+- A feed that lists two items with the same GUID keeps the first; the stored episode alternated between the two on every refresh
 
 ## [0.1.2] - 2026-11-11
 

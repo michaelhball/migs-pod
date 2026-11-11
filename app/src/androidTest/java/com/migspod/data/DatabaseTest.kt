@@ -281,4 +281,18 @@ class DatabaseTest {
         assertEquals(5000L, refreshed.playbackPositionMs)
         assertEquals(0L, episodeDao.getEpisodesForPodcastOnce("public").single().playbackPositionMs)
     }
+
+    @Test
+    fun itemsOfOneFeedSharingAGuidKeepTheFirstListed() = runTest {
+        podcastDao.upsertPodcast(Podcast(feedUrl = "feed", title = "Feed"))
+        val items = listOf(
+            Episode(id = "same", podcastFeedUrl = "feed", title = "Episode"),
+            Episode(id = "same", podcastFeedUrl = "feed", title = "Trailer"),
+        )
+
+        episodeDao.saveFeedEpisodes("feed", items)
+        episodeDao.saveFeedEpisodes("feed", items)
+
+        assertEquals("Episode", episodeDao.getEpisodesForPodcastOnce("feed").single().title)
+    }
 }

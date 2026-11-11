@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-11-11
+
 ### Changed
 - Downloads opens scrolled to the episode that is loaded in the player and highlights it
 - The player holds a wake lock and Wi-Fi lock while streaming, so playback with the screen off does not stall when the phone goes into power saving

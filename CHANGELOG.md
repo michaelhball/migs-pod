@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Downloads opens scrolled to the episode that is loaded in the player and highlights it
 
+### Fixed
+- Every screen's top bar sits directly under the status bar; the status bar height was being added twice, which left an empty band above each title
+
 ## [0.1.2] - 2026-11-11
 
 ### Changed

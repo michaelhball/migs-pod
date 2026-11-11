@@ -3,6 +3,7 @@ package com.migspod.ui
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
@@ -150,6 +151,8 @@ fun MigsPodApp() {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                // The screens' own top bars would otherwise add the status bar height a second time.
+                .consumeWindowInsets(paddingValues)
         ) {
             NavHost(
                 navController = navController,

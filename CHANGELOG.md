@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The mini player and Now Playing stop polling the player while the app is in the background, which removes 2 to 6 main-thread wakeups per second during screen-off listening
 - The player's media id is a hash of the episode id, so a private feed URL or tokenised audio URL inside an episode id is not readable by other apps through the media session
 - The release APK is 28% smaller (3.87 MB to 2.80 MB): R8 shrinks Media3 and the data classes, and only English resources are packaged
+- Media3 (the player library) is updated from 1.9.2 to 1.11.1, which fixes crashes in its notification and foreground-service handling
 
 ### Fixed
 - Every screen's top bar sits directly under the status bar; the status bar height was being added twice, which left an empty band above each title
